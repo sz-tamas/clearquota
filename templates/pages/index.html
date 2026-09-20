@@ -1,97 +1,32 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Usage Dashboard</title><link rel="stylesheet" href="/static/css/output.css"><script src="https://unpkg.com/htmx.org@2.0.4"></script></head>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Usage Dashboard</title><link rel="stylesheet" href="/static/css/output.css"><script src="https://unpkg.com/lucide@latest"></script><script src="https://unpkg.com/htmx.org@2.0.4"></script></head>
 <body><div id="app">
   <div class="{% match account %}{% when Some with (account) %}{% if validate_authentication || account.auth_status != "ready" %}blur-sm pointer-events-none{% endif %}{% when None %}blur-sm pointer-events-none{% endmatch %} min-h-screen min-[800px]:flex">
-    <button class="fixed inset-0 z-30 hidden bg-slate-950/35 min-[800px]:hidden" type="button" data-sidebar-backdrop aria-label="Close navigation"></button><aside id="sidebar" data-sidebar inert class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-slate-200 bg-white px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none" aria-label="Primary navigation" aria-hidden="true"><a class="flex items-center gap-3 px-2" href="/"><span class="grid size-9 place-items-center rounded-xl bg-brand font-black text-white">U</span><strong class="text-sm">Usage Desk</strong></a><nav class="mt-8"><p class="px-3 text-xs font-semibold tracking-[.12em] text-slate-400 uppercase">Menu</p><ul class="mt-3 space-y-1 text-sm font-medium"><li><a data-sidebar-nav class="flex items-center gap-3 rounded-lg bg-violet-50 px-3 py-2.5 text-brand" href="/" aria-current="page"><span class="grid size-5 place-items-center">⌂</span>Dashboard</a></li><li><a data-sidebar-nav class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-700 hover:bg-slate-100" href="#provider-list"><span class="grid size-5 place-items-center">▦</span>Providers</a></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><span class="grid size-5 place-items-center">♙</span>Customers</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><span class="grid size-5 place-items-center">◌</span>Alerts</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><span class="grid size-5 place-items-center">↗</span>Optimisation</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><span class="grid size-5 place-items-center">?</span>Docs</span></li></ul></nav><div class="mt-8 border-t border-slate-100 pt-4">{% match account %}{% when Some with (account) %}<button data-sidebar-settings class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100" type="button"><span class="grid size-5 place-items-center">⚙</span>Settings</button>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400" aria-disabled="true"><span class="grid size-5 place-items-center">⚙</span>Settings</span>{% endmatch %}</div></aside>
-    <div class="min-w-0 flex-1"><header class="border-b border-slate-200 bg-white"><div class="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-end px-5"><div class="flex items-center gap-2"><button class="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 min-[800px]:hidden" type="button" data-sidebar-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>{% match account %}{% when Some with (account) %}<button class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Project settings" hx-get="/account/settings" hx-target="#provider-dialog" hx-swap="innerHTML"><span class="text-lg" aria-hidden="true">⚙</span></button><span class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600">{{ account.project_id }}</span>{% when None %}{% endmatch %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">Local only</span></div></div></header>
-    <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><button class="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200" data-refresh-all hx-post="/providers/refresh" hx-sync="this:drop" hx-target="#provider-dialog" hx-swap="innerHTML">Refresh all</button><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" hx-get="/providers/new" hx-target="#provider-dialog" hx-swap="innerHTML">Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their current usage here.</p>{% include "partials/provider_list.html" %}</main></div>
+    <button class="fixed inset-0 z-30 hidden bg-slate-950/35 min-[800px]:hidden" type="button" data-sidebar-backdrop aria-label="Close navigation"></button><aside id="sidebar" data-sidebar inert class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-slate-200 bg-white px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none" aria-label="Primary navigation" aria-hidden="true"><a class="flex items-center gap-3 px-2" href="/"><span class="grid size-9 place-items-center rounded-xl bg-brand font-black text-white">U</span><strong class="text-sm">Usage Desk</strong></a><nav class="mt-8"><p class="px-3 text-xs font-semibold tracking-[.12em] text-slate-400 uppercase">Menu</p><ul class="mt-3 space-y-1 text-sm font-medium"><li><a data-sidebar-nav class="flex items-center gap-3 rounded-lg bg-violet-50 px-3 py-2.5 text-brand" href="/" aria-current="page"><i class="size-5" data-lucide="layout-dashboard" aria-hidden="true"></i>Dashboard</a></li><li><a data-sidebar-nav class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-700 hover:bg-slate-100" href="#provider-list"><i class="size-5" data-lucide="blocks" aria-hidden="true"></i>Providers</a></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><i class="size-5" data-lucide="users" aria-hidden="true"></i>Customers</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><i class="size-5" data-lucide="bell" aria-hidden="true"></i>Alerts</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><i class="size-5" data-lucide="chart-no-axes-combined" aria-hidden="true"></i>Optimisation</span></li><li><span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-slate-400" aria-disabled="true" title="Coming soon"><i class="size-5" data-lucide="circle-help" aria-hidden="true"></i>Docs</span></li></ul></nav><div class="mt-8 border-t border-slate-100 pt-4">{% match account %}{% when Some with (account) %}<button data-sidebar-settings class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100" type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400" aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}</div></aside>
+    <div class="min-w-0 flex-1"><header class="border-b border-slate-200 bg-white"><div class="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-end px-5"><div class="flex items-center gap-2"><button class="grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 min-[800px]:hidden" type="button" data-sidebar-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation"><i class="size-5" data-lucide="menu" aria-hidden="true"></i></button>{% match account %}{% when Some with (account) %}<button class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100" aria-label="Project settings" hx-get="/account/settings" hx-target="#provider-dialog" hx-swap="innerHTML"><i class="size-5" data-lucide="settings" aria-hidden="true"></i></button><span class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600">{{ account.project_id }}</span>{% when None %}{% endmatch %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">Local only</span></div></div></header>
+    <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><button class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200" data-refresh-all hx-post="/providers/refresh" hx-sync="this:drop" hx-target="#provider-dialog" hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" hx-get="/providers/new" hx-target="#provider-dialog" hx-swap="innerHTML"><i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their current usage here.</p>{% include "partials/provider_list.html" %}</main></div>
   </div>
   {% include "partials/onboarding_modal.html" %}
   {% match account %}{% when Some with (account) %}{% if validate_authentication %}{% include "partials/auth_validating.html" %}{% else if account.auth_status != "ready" %}{% include "partials/auth_required.html" %}{% endif %}{% when None %}{% endmatch %}
   <div id="provider-dialog"></div>
 </div><script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script><script>
   const { animate, stagger } = Motion;
-
+  const renderLucideIcons = () => window.lucide?.createIcons({ attrs: { 'stroke-width': 1.75 } });
+  renderLucideIcons();
   const isMobileSidebar = () => window.innerWidth < 800;
-  const setSidebarOpen = (open) => {
-    const sidebar = document.querySelector('[data-sidebar]');
-    const backdrop = document.querySelector('[data-sidebar-backdrop]');
-    const toggle = document.querySelector('[data-sidebar-toggle]');
-    if (!sidebar || !backdrop || !toggle) return;
-
-    const showDrawer = open && isMobileSidebar();
-    sidebar.classList.toggle('-translate-x-full', !showDrawer);
-    sidebar.toggleAttribute('inert', isMobileSidebar() && !showDrawer);
-    sidebar.setAttribute('aria-hidden', String(isMobileSidebar() && !showDrawer));
-    backdrop.classList.toggle('hidden', !showDrawer);
-    toggle.setAttribute('aria-expanded', String(showDrawer));
-  };
+  const setSidebarOpen = (open) => { const sidebar = document.querySelector('[data-sidebar]'); const backdrop = document.querySelector('[data-sidebar-backdrop]'); const toggle = document.querySelector('[data-sidebar-toggle]'); if (!sidebar || !backdrop || !toggle) return; const showDrawer = open && isMobileSidebar(); sidebar.classList.toggle('-translate-x-full', !showDrawer); sidebar.toggleAttribute('inert', isMobileSidebar() && !showDrawer); sidebar.setAttribute('aria-hidden', String(isMobileSidebar() && !showDrawer)); backdrop.classList.toggle('hidden', !showDrawer); toggle.setAttribute('aria-expanded', String(showDrawer)); };
   setSidebarOpen(false);
-  document.addEventListener('click', (event) => {
-    if (event.target.closest('[data-sidebar-toggle]')) {
-      const isOpen = document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded') === 'true';
-      setSidebarOpen(!isOpen);
-    } else if (event.target.closest('[data-sidebar-backdrop], [data-sidebar-nav]')) {
-      setSidebarOpen(false);
-    }
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setSidebarOpen(false);
-  });
-  window.addEventListener('resize', () => setSidebarOpen(false));
-
-  const refreshDialog = (title, body, spinner) => `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="refresh-dialog-title">${spinner ? '<div class="mx-auto grid size-14 place-items-center rounded-full bg-brand/10"><svg class="size-7 animate-spin text-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="9" class="opacity-25"></circle><path d="M12 3a9 9 0 0 1 9 9" stroke-linecap="round"></path></svg></div>' : ''}<p class="mt-5 text-xs font-bold tracking-[.15em] text-brand uppercase">Refreshing providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">${title}</h2><p class="mt-3 text-sm leading-6 text-slate-600">${body}</p>${spinner ? '' : '<div class="mt-7"><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" onclick="document.getElementById(\'provider-dialog\').innerHTML=\'\'">Close</button></div>'}</section></div>`;
-  document.body.addEventListener('htmx:beforeRequest', (event) => {
-    if (event.detail.elt.matches('[data-refresh-all]')) {
-      document.getElementById('provider-dialog').innerHTML = refreshDialog('Refreshing…', 'Fetching the latest usage from your providers. This can take a moment.', true);
-    }
-  });
-  const showRefreshError = (event) => {
-    if (event.detail.elt.matches('[data-refresh-all]')) {
-      document.getElementById('provider-dialog').innerHTML = refreshDialog('Provider refresh failed', 'We could not complete the refresh. Please try again.', false);
-    }
-  };
-  document.body.addEventListener('htmx:responseError', showRefreshError);
-  document.body.addEventListener('htmx:sendError', showRefreshError);
-  const layoutProviderCards = (grid) => {
-    const styles = getComputedStyle(grid);
-    const rowHeight = Number.parseFloat(styles.gridAutoRows);
-    const rowGap = Number.parseFloat(styles.rowGap);
-    if (!rowHeight || Number.isNaN(rowGap)) return;
-
-    grid.querySelectorAll('[data-provider-card]').forEach((card) => {
-      card.style.gridRowEnd = `span ${Math.ceil((card.offsetHeight + rowGap) / (rowHeight + rowGap))}`;
-    });
-  };
-  const scheduleProviderCardLayout = () => {
-    requestAnimationFrame(() => document.querySelectorAll('[data-provider-grid]').forEach(layoutProviderCards));
-  };
-  const observeProviderCardGrid = (grid) => {
-    if (grid.dataset.providerGridObserved) return;
-    grid.dataset.providerGridObserved = 'true';
-    new ResizeObserver(scheduleProviderCardLayout).observe(grid);
-  };
-  const animateProviderCards = () => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const cards = [...document.querySelectorAll('[data-provider-card]:not([data-motion-animated])')];
-    cards.forEach((card) => card.dataset.motionAnimated = 'true');
-
-    if (cards.length) {
-      animate(
-        cards,
-        { opacity: [0, 1], y: [16, 0], scale: [0.985, 1] },
-        { delay: stagger(0.07), duration: 0.38, ease: [0.22, 1, 0.36, 1] },
-      );
-    }
-  };
-  const initializeProviderCardGrids = () => {
-    document.querySelectorAll('[data-provider-grid]').forEach(observeProviderCardGrid);
-    scheduleProviderCardLayout();
-    animateProviderCards();
-  };
-  initializeProviderCardGrids();
-  document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids);
-  document.body.addEventListener('htmx:afterSettle', () => setSidebarOpen(false));
-  window.addEventListener('resize', scheduleProviderCardLayout);
+  document.addEventListener('click', (event) => { if (event.target.closest('[data-sidebar-toggle]')) { const isOpen = document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded') === 'true'; setSidebarOpen(!isOpen); } else if (event.target.closest('[data-sidebar-backdrop], [data-sidebar-nav]')) setSidebarOpen(false); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarOpen(false); }); window.addEventListener('resize', () => setSidebarOpen(false));
+  const refreshDialog = (title, body, spinner) => `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="refresh-dialog-title">${spinner ? '<div class="mx-auto grid size-14 place-items-center rounded-full bg-brand/10"><i class="size-7 animate-spin text-brand" data-lucide="loader-circle" aria-hidden="true"></i></div>' : ''}<p class="mt-5 text-xs font-bold tracking-[.15em] text-brand uppercase">Refreshing providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">${title}</h2><p class="mt-3 text-sm leading-6 text-slate-600">${body}</p>${spinner ? '' : '<div class="mt-7"><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" onclick="document.getElementById(\'provider-dialog\').innerHTML=\'\'">Close</button></div>'}</section></div>`;
+  const renderRefreshDialog = (title, body, spinner) => { document.getElementById('provider-dialog').innerHTML = refreshDialog(title, body, spinner); renderLucideIcons(); };
+  document.body.addEventListener('htmx:beforeRequest', (event) => { if (event.detail.elt.matches('[data-refresh-all]')) renderRefreshDialog('Refreshing…', 'Fetching the latest usage from your providers. This can take a moment.', true); });
+  const showRefreshError = (event) => { if (event.detail.elt.matches('[data-refresh-all]')) renderRefreshDialog('Provider refresh failed', 'We could not complete the refresh. Please try again.', false); };
+  document.body.addEventListener('htmx:responseError', showRefreshError); document.body.addEventListener('htmx:sendError', showRefreshError);
+  const layoutProviderCards = (grid) => { const styles = getComputedStyle(grid); const rowHeight = Number.parseFloat(styles.gridAutoRows); const rowGap = Number.parseFloat(styles.rowGap); if (!rowHeight || Number.isNaN(rowGap)) return; grid.querySelectorAll('[data-provider-card]').forEach((card) => { card.style.gridRowEnd = `span ${Math.ceil((card.offsetHeight + rowGap) / (rowHeight + rowGap))}`; }); };
+  const scheduleProviderCardLayout = () => { requestAnimationFrame(() => document.querySelectorAll('[data-provider-grid]').forEach(layoutProviderCards)); };
+  const observeProviderCardGrid = (grid) => { if (grid.dataset.providerGridObserved) return; grid.dataset.providerGridObserved = 'true'; new ResizeObserver(scheduleProviderCardLayout).observe(grid); };
+  const animateProviderCards = () => { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; const cards = [...document.querySelectorAll('[data-provider-card]:not([data-motion-animated])')]; cards.forEach((card) => card.dataset.motionAnimated = 'true'); if (cards.length) animate(cards, { opacity: [0, 1], y: [16, 0], scale: [0.985, 1] }, { delay: stagger(0.07), duration: 0.38, ease: [0.22, 1, 0.36, 1] }); };
+  const initializeProviderCardGrids = () => { document.querySelectorAll('[data-provider-grid]').forEach(observeProviderCardGrid); scheduleProviderCardLayout(); animateProviderCards(); };
+  initializeProviderCardGrids(); document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids); document.body.addEventListener('htmx:afterSettle', renderLucideIcons); document.body.addEventListener('htmx:afterSettle', () => setSidebarOpen(false)); window.addEventListener('resize', scheduleProviderCardLayout);
 </script></body></html>
