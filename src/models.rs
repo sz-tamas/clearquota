@@ -7,7 +7,6 @@ pub struct ProviderConfig {
     pub provider_type: String,
     pub display_name: String,
     pub secret_ref: String,
-    pub enabled: bool,
     pub last_error: Option<String>,
     pub plan: String,
     pub monthly_quota: i64,

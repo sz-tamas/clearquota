@@ -22,4 +22,29 @@
   };
   document.body.addEventListener('htmx:responseError', showRefreshError);
   document.body.addEventListener('htmx:sendError', showRefreshError);
+  const layoutProviderCards = (grid) => {
+    const styles = getComputedStyle(grid);
+    const rowHeight = Number.parseFloat(styles.gridAutoRows);
+    const rowGap = Number.parseFloat(styles.rowGap);
+    if (!rowHeight || Number.isNaN(rowGap)) return;
+
+    grid.querySelectorAll('[data-provider-card]').forEach((card) => {
+      card.style.gridRowEnd = `span ${Math.ceil((card.offsetHeight + rowGap) / (rowHeight + rowGap))}`;
+    });
+  };
+  const scheduleProviderCardLayout = () => {
+    requestAnimationFrame(() => document.querySelectorAll('[data-provider-grid]').forEach(layoutProviderCards));
+  };
+  const observeProviderCardGrid = (grid) => {
+    if (grid.dataset.providerGridObserved) return;
+    grid.dataset.providerGridObserved = 'true';
+    new ResizeObserver(scheduleProviderCardLayout).observe(grid);
+  };
+  const initializeProviderCardGrids = () => {
+    document.querySelectorAll('[data-provider-grid]').forEach(observeProviderCardGrid);
+    scheduleProviderCardLayout();
+  };
+  initializeProviderCardGrids();
+  document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids);
+  window.addEventListener('resize', scheduleProviderCardLayout);
 </script></body></html>

@@ -103,7 +103,7 @@ impl Database {
 
     pub fn list_providers(&self, account_id: &str) -> Result<Vec<ProviderConfig>, rusqlite::Error> {
         let connection = self.connection()?;
-        let mut statement = connection.prepare("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE account_id = ?1 ORDER BY created_at DESC")?;
+        let mut statement = connection.prepare("SELECT id, account_id, provider_type, display_name, secret_ref, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE account_id = ?1 ORDER BY created_at DESC")?;
         statement
             .query_map([account_id], |row| {
                 Ok(ProviderConfig {
@@ -112,20 +112,19 @@ impl Database {
                     provider_type: row.get(2)?,
                     display_name: row.get(3)?,
                     secret_ref: row.get(4)?,
-                    enabled: row.get::<_, i64>(5)? != 0,
-                    last_error: row.get(6)?,
-                    plan: row.get(7)?,
-                    monthly_quota: row.get(8)?,
-                    daily_quota: row.get(9)?,
-                    apify_monthly_credit_allowance: row.get(10)?,
-                    openai_credit_start: row.get(11)?,
+                    last_error: row.get(5)?,
+                    plan: row.get(6)?,
+                    monthly_quota: row.get(7)?,
+                    daily_quota: row.get(8)?,
+                    apify_monthly_credit_allowance: row.get(9)?,
+                    openai_credit_start: row.get(10)?,
                 })
             })?
             .collect()
     }
 
     pub fn find_provider(&self, id: &str) -> Result<Option<ProviderConfig>, rusqlite::Error> {
-        self.connection()?.query_row("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE id = ?1", [id], |row| Ok(ProviderConfig { id: row.get(0)?, account_id: row.get(1)?, provider_type: row.get(2)?, display_name: row.get(3)?, secret_ref: row.get(4)?, enabled: row.get::<_, i64>(5)? != 0, last_error: row.get(6)?, plan: row.get(7)?, monthly_quota: row.get(8)?, daily_quota: row.get(9)?, apify_monthly_credit_allowance: row.get(10)?, openai_credit_start: row.get(11)? })).optional()
+        self.connection()?.query_row("SELECT id, account_id, provider_type, display_name, secret_ref, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE id = ?1", [id], |row| Ok(ProviderConfig { id: row.get(0)?, account_id: row.get(1)?, provider_type: row.get(2)?, display_name: row.get(3)?, secret_ref: row.get(4)?, last_error: row.get(5)?, plan: row.get(6)?, monthly_quota: row.get(7)?, daily_quota: row.get(8)?, apify_monthly_credit_allowance: row.get(9)?, openai_credit_start: row.get(10)? })).optional()
     }
 
     pub fn add_provider(
