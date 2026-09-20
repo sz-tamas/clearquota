@@ -422,6 +422,7 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
         .map(|provider| {
             let snapshot = state.database.latest_snapshot(&provider.id)?;
             let openai_activity = openai_activity_summary(state, &provider)?;
+            let openai_period = openai_period_label(&provider);
             let mut openai_spend_limit = openai_spend_limit_summary(&provider, snapshot.as_ref());
             if let (Some(spend_limit), Some(activity)) =
                 (openai_spend_limit.as_mut(), openai_activity.as_ref())
@@ -437,6 +438,7 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
                     state.database.openai_credit_totals(&provider.id)?,
                 ),
                 openai_activity,
+                openai_period,
                 resend_quota: resend_quota_summary(&provider, snapshot.as_ref()),
                 resend_daily_quota: resend_daily_quota_summary(&provider, snapshot.as_ref()),
                 provider,
@@ -447,6 +449,19 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
         })
         .collect::<Result<Vec<_>, AppError>>()
         .map(|cards| cards.join("\n"))
+}
+
+fn openai_period_label(provider: &ProviderConfig) -> Option<String> {
+    if provider.provider_type != "openai" {
+        return None;
+    }
+    let now = Utc::now();
+    Some(format!(
+        "Current month · {} 1–{}, {} UTC",
+        now.format("%B"),
+        now.day(),
+        now.year()
+    ))
 }
 
 fn openai_activity_summary(
@@ -888,6 +903,7 @@ struct ProviderCardTemplate {
     openai_spend_limit: Option<OpenAiSpendLimitSummary>,
     openai_credit: Option<OpenAiCreditSummary>,
     openai_activity: Option<OpenAiActivitySummaryView>,
+    openai_period: Option<String>,
     resend_quota: Option<ResendQuotaSummary>,
     resend_daily_quota: Option<ResendQuotaSummary>,
 }
