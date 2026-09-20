@@ -1,6 +1,6 @@
 # Rust Usage Dashboard
 
-[![CI](https://github.com/sz-tamas/rust-usage-dash/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sz-tamas/rust-usage-dash/actions/workflows/ci.yml)
+[![CI](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/-Rust-DEA584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/-Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
