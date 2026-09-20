@@ -7,11 +7,12 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
 };
+use chrono::{Datelike, NaiveDate, Utc};
 
 use crate::{
     models::{
-        Account, NewAccount, NewProvider, ProviderConfig, UpdateAccount, UpdateProvider,
-        UsageSnapshot,
+        Account, NewAccount, NewOpenAiCreditEvent, NewProvider, OpenAiCreditEvent, ProviderConfig,
+        UpdateAccount, UpdateProvider, UsageSnapshot,
     },
     secrets::{begin_authentication, check_application_default_credentials},
     web::AppState,
@@ -37,6 +38,14 @@ pub fn router() -> Router<Arc<AppState>> {
         .route("/providers/new", get(new_provider_form))
         .route("/providers/{id}/edit", get(edit_provider))
         .route("/providers/{id}", post(update_provider))
+        .route(
+            "/providers/{id}/credit-events",
+            post(add_openai_credit_event),
+        )
+        .route(
+            "/providers/{id}/credit-events/{event_id}/delete",
+            post(delete_openai_credit_event),
+        )
         .route("/providers/{id}/delete", post(delete_provider))
         .route("/providers/{id}/delete/confirm", get(delete_confirmation))
 }
@@ -191,7 +200,14 @@ async fn edit_provider(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
     let provider = provider_for_active_account(&state, &id)?;
-    Ok(Html(EditProviderTemplate { provider }.render()?))
+    let credit_events = state.database.list_openai_credit_events(&provider.id)?;
+    Ok(Html(
+        EditProviderTemplate {
+            provider,
+            credit_events,
+        }
+        .render()?,
+    ))
 }
 
 async fn update_provider(
@@ -234,6 +250,52 @@ async fn update_provider(
 
 fn valid_credit_allowance(value: Option<f64>) -> bool {
     value.is_some_and(|amount| amount.is_finite() && amount > 0.0)
+}
+
+async fn add_openai_credit_event(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Form(input): Form<NewOpenAiCreditEvent>,
+) -> Result<Html<String>, AppError> {
+    let provider = provider_for_active_account(&state, &id)?;
+    let effective_at = NaiveDate::parse_from_str(&input.date, "%Y-%m-%d")
+        .ok()
+        .and_then(|date| date.and_hms_opt(0, 0, 0))
+        .map(|date| date.and_utc().timestamp())
+        .ok_or(AppError::BadRequest)?;
+    if provider.provider_type != "openai"
+        || !matches!(
+            input.event_type.as_str(),
+            "purchase" | "refund" | "adjustment"
+        )
+        || !input.amount.is_finite()
+        || input.amount <= 0.0
+        || effective_at > chrono::Utc::now().timestamp()
+    {
+        return Err(AppError::BadRequest);
+    }
+    state.database.add_openai_credit_event(
+        &provider.id,
+        &input.event_type,
+        effective_at,
+        input.amount,
+        input.note.as_deref().unwrap_or("").trim(),
+    )?;
+    edit_provider(Path(id), State(state)).await
+}
+
+async fn delete_openai_credit_event(
+    Path((id, event_id)): Path<(String, i64)>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Html<String>, AppError> {
+    let provider = provider_for_active_account(&state, &id)?;
+    if provider.provider_type != "openai" {
+        return Err(AppError::BadRequest);
+    }
+    state
+        .database
+        .delete_openai_credit_event(&provider.id, event_id)?;
+    edit_provider(Path(id), State(state)).await
 }
 
 async fn delete_confirmation(
@@ -359,9 +421,22 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
         .into_iter()
         .map(|provider| {
             let snapshot = state.database.latest_snapshot(&provider.id)?;
+            let openai_activity = openai_activity_summary(state, &provider)?;
+            let mut openai_spend_limit = openai_spend_limit_summary(&provider, snapshot.as_ref());
+            if let (Some(spend_limit), Some(activity)) =
+                (openai_spend_limit.as_mut(), openai_activity.as_ref())
+            {
+                spend_limit.projects.clone_from(&activity.projects);
+                spend_limit.spend_points.clone_from(&activity.spend_points);
+            }
             ProviderCardTemplate {
                 apify_credit: apify_credit_summary(&provider, snapshot.as_ref()),
-                openai_spend_limit: openai_spend_limit_summary(&provider, snapshot.as_ref()),
+                openai_spend_limit,
+                openai_credit: openai_credit_summary(
+                    &provider,
+                    state.database.openai_credit_totals(&provider.id)?,
+                ),
+                openai_activity,
                 resend_quota: resend_quota_summary(&provider, snapshot.as_ref()),
                 resend_daily_quota: resend_daily_quota_summary(&provider, snapshot.as_ref()),
                 provider,
@@ -372,6 +447,118 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
         })
         .collect::<Result<Vec<_>, AppError>>()
         .map(|cards| cards.join("\n"))
+}
+
+fn openai_activity_summary(
+    state: &AppState,
+    provider: &ProviderConfig,
+) -> Result<Option<OpenAiActivitySummaryView>, AppError> {
+    if provider.provider_type != "openai" {
+        return Ok(None);
+    }
+    let now = Utc::now();
+    let start = now
+        .date_naive()
+        .with_day(1)
+        .and_then(|date| date.and_hms_opt(0, 0, 0))
+        .map(|date| date.and_utc().timestamp())
+        .ok_or(AppError::BadRequest)?;
+    let end = now.timestamp() + 1;
+    let daily_activity = state
+        .database
+        .openai_daily_activity(&provider.id, start, end)?;
+    let daily_spend = state
+        .database
+        .openai_daily_spend(&provider.id, start, end)?;
+    let project_spend = state
+        .database
+        .openai_project_spend(&provider.id, start, end)?;
+    if daily_activity.is_empty() && daily_spend.is_empty() && project_spend.is_empty() {
+        return Ok(None);
+    }
+    let activity = state
+        .database
+        .openai_activity_summary(&provider.id, start, end)?;
+    let activity_available = !daily_activity.is_empty();
+    let total_project_spend: f64 = project_spend.iter().map(|project| project.amount).sum();
+    let projects = project_spend
+        .into_iter()
+        .map(|project| OpenAiProjectSpendView {
+            name: project
+                .project_id
+                .unwrap_or_else(|| "Default project".to_owned()),
+            amount: format_signed_usd(project.amount),
+            percent: if total_project_spend > 0.0 {
+                format!(
+                    "{:.1}",
+                    (project.amount / total_project_spend * 100.0).clamp(0.0, 100.0)
+                )
+            } else {
+                "0".to_owned()
+            },
+        })
+        .collect();
+    let token_values = daily_activity
+        .iter()
+        .map(|day| (day.input_tokens + day.output_tokens) as f64)
+        .collect::<Vec<_>>();
+    let request_values = daily_activity
+        .iter()
+        .map(|day| day.request_count as f64)
+        .collect::<Vec<_>>();
+    let cache_values = daily_activity
+        .iter()
+        .map(|day| {
+            if day.input_tokens == 0 {
+                0.0
+            } else {
+                day.cached_input_tokens as f64 / day.input_tokens as f64 * 100.0
+            }
+        })
+        .collect::<Vec<_>>();
+    let spend_values = daily_spend.iter().map(|day| day.amount).collect::<Vec<_>>();
+
+    Ok(Some(OpenAiActivitySummaryView {
+        activity_available,
+        total_tokens: format_count(activity.input_tokens + activity.output_tokens),
+        input_tokens: format_count(activity.input_tokens),
+        output_tokens: format_count(activity.output_tokens),
+        requests: format_count(activity.request_count),
+        cache_hit_rate: activity
+            .cache_hit_rate
+            .map(|rate| format!("{rate:.1}%"))
+            .unwrap_or_else(|| "—".to_owned()),
+        token_points: sparkline_points(&token_values),
+        request_points: sparkline_points(&request_values),
+        cache_points: sparkline_points(&cache_values),
+        spend_points: sparkline_points(&spend_values),
+        projects,
+    }))
+}
+
+fn sparkline_points(values: &[f64]) -> String {
+    if values.is_empty() {
+        return "0,36 100,36".to_owned();
+    }
+    if values.len() == 1 {
+        return "0,20 100,20".to_owned();
+    }
+    let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
+    let maximum = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| {
+            let x = index as f64 / (values.len() - 1) as f64 * 100.0;
+            let y = if (maximum - minimum).abs() < f64::EPSILON {
+                20.0
+            } else {
+                36.0 - ((value - minimum) / (maximum - minimum) * 32.0)
+            };
+            format!("{x:.1},{y:.1}")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn apify_credit_summary(
@@ -416,7 +603,37 @@ fn openai_spend_limit_summary(
     Some(OpenAiSpendLimitSummary {
         used: format_usd(metric.used),
         limit: metric.limit.map(format_usd),
+        percent: metric
+            .limit
+            .filter(|limit| *limit > 0.0)
+            .map(|limit| format!("{:.1}", (metric.used / limit * 100.0).clamp(0.0, 100.0)))
+            .unwrap_or_else(|| "0".to_owned()),
+        spend_points: "0,36 100,36".to_owned(),
+        projects: Vec::new(),
     })
+}
+fn openai_credit_summary(
+    provider: &ProviderConfig,
+    totals: Option<(f64, f64)>,
+) -> Option<OpenAiCreditSummary> {
+    if provider.provider_type != "openai" {
+        return None;
+    }
+    let (credit, spent) = totals?;
+    Some(OpenAiCreditSummary {
+        used: format_usd(spent),
+        total: format_signed_usd(credit),
+        remaining: format_signed_usd(credit - spent),
+        percent: format!("{:.1}", credit_usage_percent(spent, credit)),
+    })
+}
+
+fn credit_usage_percent(spent: f64, credit: f64) -> f64 {
+    if credit <= 0.0 {
+        0.0
+    } else {
+        (spent / credit * 100.0).clamp(0.0, 100.0)
+    }
 }
 
 fn format_usd(value: f64) -> String {
@@ -488,6 +705,18 @@ fn resend_daily_quota_summary(
 fn format_email_count(value: f64) -> String {
     let value = value.max(0.0).round() as i64;
     let digits = value.to_string();
+    let mut formatted = String::with_capacity(digits.len() + digits.len() / 3);
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            formatted.push(',');
+        }
+        formatted.push(digit);
+    }
+    formatted
+}
+
+fn format_count(value: i64) -> String {
+    let digits = value.max(0).to_string();
     let mut formatted = String::with_capacity(digits.len() + digits.len() / 3);
     for (index, digit) in digits.chars().enumerate() {
         if index > 0 && (digits.len() - index).is_multiple_of(3) {
@@ -613,6 +842,26 @@ mod tests {
         assert!(!valid_credit_allowance(Some(0.0)));
         assert!(!valid_credit_allowance(Some(f64::NAN)));
     }
+
+    #[test]
+    fn openai_credit_usage_is_capped_for_the_progress_bar() {
+        assert_eq!(credit_usage_percent(8.92, 10.0), 89.2);
+        assert_eq!(credit_usage_percent(12.0, 10.0), 100.0);
+        assert_eq!(credit_usage_percent(8.92, 0.0), 0.0);
+    }
+
+    #[test]
+    fn formats_large_activity_counts() {
+        assert_eq!(format_count(2_462_423), "2,462,423");
+        assert_eq!(format_count(0), "0");
+    }
+
+    #[test]
+    fn builds_normalized_sparkline_points() {
+        assert_eq!(sparkline_points(&[]), "0,36 100,36");
+        assert_eq!(sparkline_points(&[4.0]), "0,20 100,20");
+        assert_eq!(sparkline_points(&[0.0, 10.0]), "0.0,36.0 100.0,4.0");
+    }
 }
 
 #[derive(Template)]
@@ -637,8 +886,31 @@ struct ProviderCardTemplate {
     snapshot: Option<UsageSnapshot>,
     apify_credit: Option<ApifyCreditSummary>,
     openai_spend_limit: Option<OpenAiSpendLimitSummary>,
+    openai_credit: Option<OpenAiCreditSummary>,
+    openai_activity: Option<OpenAiActivitySummaryView>,
     resend_quota: Option<ResendQuotaSummary>,
     resend_daily_quota: Option<ResendQuotaSummary>,
+}
+
+struct OpenAiActivitySummaryView {
+    activity_available: bool,
+    total_tokens: String,
+    input_tokens: String,
+    output_tokens: String,
+    requests: String,
+    cache_hit_rate: String,
+    token_points: String,
+    request_points: String,
+    cache_points: String,
+    spend_points: String,
+    projects: Vec<OpenAiProjectSpendView>,
+}
+
+#[derive(Clone)]
+struct OpenAiProjectSpendView {
+    name: String,
+    amount: String,
+    percent: String,
 }
 
 struct ApifyCreditSummary {
@@ -651,6 +923,15 @@ struct ApifyCreditSummary {
 struct OpenAiSpendLimitSummary {
     used: String,
     limit: Option<String>,
+    percent: String,
+    spend_points: String,
+    projects: Vec<OpenAiProjectSpendView>,
+}
+struct OpenAiCreditSummary {
+    used: String,
+    total: String,
+    remaining: String,
+    percent: String,
 }
 
 struct ResendQuotaSummary {
@@ -669,6 +950,7 @@ struct ProviderListTemplate {
 #[template(path = "partials/edit_provider.html")]
 struct EditProviderTemplate {
     provider: ProviderConfig,
+    credit_events: Vec<OpenAiCreditEvent>,
 }
 #[derive(Template)]
 #[template(path = "partials/delete_provider.html")]

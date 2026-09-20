@@ -117,6 +117,8 @@ impl Provider for ResendProvider {
             cost: None,
             currency: None,
             metrics,
+            openai_cost_ledger: None,
+            openai_usage_ledger: None,
         })
     }
 }

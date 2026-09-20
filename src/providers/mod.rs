@@ -27,6 +27,8 @@ pub enum ProviderError {
     OpenAiCostsInvalidResponse,
     #[error("OpenAI spend alerts response did not contain a 100% monthly threshold")]
     OpenAiSpendAlertInvalidResponse,
+    #[error("OpenAI completions usage response did not contain usable activity data")]
+    OpenAiUsageInvalidResponse,
 }
 
 #[async_trait]

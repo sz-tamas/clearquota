@@ -44,6 +44,8 @@ impl Provider for ApifyProvider {
             cost: Some(used),
             currency: Some("USD".to_owned()),
             metrics: monthly_credit_metrics(used, limit),
+            openai_cost_ledger: None,
+            openai_usage_ledger: None,
         })
     }
 }

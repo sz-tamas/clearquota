@@ -3,7 +3,9 @@ use std::{fs, path::Path};
 use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::models::{
-    Account, NewAccount, NewProvider, ProviderConfig, UpdateAccount, UpdateProvider, UsageSnapshot,
+    Account, NewAccount, NewProvider, OpenAiActivitySummary, OpenAiCostLedger, OpenAiCreditEvent,
+    OpenAiDailyActivity, OpenAiDailySpend, OpenAiProjectSpend, OpenAiUsageLedger, ProviderConfig,
+    UpdateAccount, UpdateProvider, UsageSnapshot,
 };
 
 #[derive(Clone)]
@@ -70,6 +72,9 @@ impl Database {
             Err(error) if error.to_string().contains("duplicate column name") => (),
             Err(error) => return Err(error),
         };
+        connection.execute_batch(include_str!("../migrations/009_openai_cost_ledger.sql"))?;
+        connection.execute_batch(include_str!("../migrations/011_openai_credit_events.sql"))?;
+        connection.execute_batch(include_str!("../migrations/012_openai_usage_ledger.sql"))?;
         Self::compact_provider_secret_names(&connection)
     }
 
@@ -98,7 +103,7 @@ impl Database {
 
     pub fn list_providers(&self, account_id: &str) -> Result<Vec<ProviderConfig>, rusqlite::Error> {
         let connection = self.connection()?;
-        let mut statement = connection.prepare("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance FROM providers WHERE account_id = ?1 ORDER BY created_at DESC")?;
+        let mut statement = connection.prepare("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE account_id = ?1 ORDER BY created_at DESC")?;
         statement
             .query_map([account_id], |row| {
                 Ok(ProviderConfig {
@@ -113,13 +118,14 @@ impl Database {
                     monthly_quota: row.get(8)?,
                     daily_quota: row.get(9)?,
                     apify_monthly_credit_allowance: row.get(10)?,
+                    openai_credit_start: row.get(11)?,
                 })
             })?
             .collect()
     }
 
     pub fn find_provider(&self, id: &str) -> Result<Option<ProviderConfig>, rusqlite::Error> {
-        self.connection()?.query_row("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance FROM providers WHERE id = ?1", [id], |row| Ok(ProviderConfig { id: row.get(0)?, account_id: row.get(1)?, provider_type: row.get(2)?, display_name: row.get(3)?, secret_ref: row.get(4)?, enabled: row.get::<_, i64>(5)? != 0, last_error: row.get(6)?, plan: row.get(7)?, monthly_quota: row.get(8)?, daily_quota: row.get(9)?, apify_monthly_credit_allowance: row.get(10)? })).optional()
+        self.connection()?.query_row("SELECT id, account_id, provider_type, display_name, secret_ref, enabled, last_error, plan, monthly_quota, daily_quota, apify_monthly_credit_allowance, (SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = providers.id) FROM providers WHERE id = ?1", [id], |row| Ok(ProviderConfig { id: row.get(0)?, account_id: row.get(1)?, provider_type: row.get(2)?, display_name: row.get(3)?, secret_ref: row.get(4)?, enabled: row.get::<_, i64>(5)? != 0, last_error: row.get(6)?, plan: row.get(7)?, monthly_quota: row.get(8)?, daily_quota: row.get(9)?, apify_monthly_credit_allowance: row.get(10)?, openai_credit_start: row.get(11)? })).optional()
     }
 
     pub fn add_provider(
@@ -209,12 +215,252 @@ impl Database {
         &self,
         provider_id: &str,
     ) -> Result<Option<UsageSnapshot>, rusqlite::Error> {
-        self.connection()?.query_row("SELECT timestamp, status, cost, currency, raw_metrics_json FROM usage_snapshots WHERE provider_id = ?1 ORDER BY id DESC LIMIT 1", [provider_id], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default() })).optional()
+        self.connection()?.query_row("SELECT timestamp, status, cost, currency, raw_metrics_json FROM usage_snapshots WHERE provider_id = ?1 ORDER BY id DESC LIMIT 1", [provider_id], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(), openai_cost_ledger: None, openai_usage_ledger: None })).optional()
     }
 
     pub fn save_snapshot(&self, snapshot: &UsageSnapshot) -> Result<(), rusqlite::Error> {
         let metrics = serde_json::to_string(&snapshot.metrics).unwrap_or_else(|_| "[]".to_owned());
-        self.connection()?.execute("INSERT INTO usage_snapshots (provider_id, timestamp, status, cost, currency, raw_metrics_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![snapshot.provider_id, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics])?;
+        let mut connection = self.connection()?;
+        let transaction = connection.transaction()?;
+        transaction.execute("INSERT INTO usage_snapshots (provider_id, timestamp, status, cost, currency, raw_metrics_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![snapshot.provider_id, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics])?;
+        if let Some(ledger) = &snapshot.openai_cost_ledger {
+            self.replace_openai_cost_ledger(&transaction, &snapshot.provider_id, ledger)?;
+        }
+        if let Some(ledger) = &snapshot.openai_usage_ledger {
+            self.replace_openai_usage_ledger(&transaction, &snapshot.provider_id, ledger)?;
+        }
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub fn openai_cost_since(
+        &self,
+        provider_id: &str,
+        start_time: i64,
+    ) -> Result<f64, rusqlite::Error> {
+        self.connection()?.query_row(
+            "SELECT COALESCE(SUM(amount), 0) FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2",
+            params![provider_id, start_time],
+            |row| row.get(0),
+        )
+    }
+
+    #[allow(
+        dead_code,
+        reason = "backend query prepared for the upcoming dashboard UI"
+    )]
+    pub fn openai_activity_summary(
+        &self,
+        provider_id: &str,
+        start_time: i64,
+        end_time: i64,
+    ) -> Result<OpenAiActivitySummary, rusqlite::Error> {
+        let (input_tokens, cached_input_tokens, output_tokens, request_count) = self
+            .connection()?
+            .query_row(
+                "SELECT COALESCE(SUM(input_tokens), 0), COALESCE(SUM(cached_input_tokens), 0), COALESCE(SUM(output_tokens), 0), COALESCE(SUM(request_count), 0) FROM openai_usage_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3",
+                params![provider_id, start_time, end_time],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )?;
+        let cache_hit_rate =
+            (input_tokens > 0).then(|| cached_input_tokens as f64 / input_tokens as f64 * 100.0);
+        Ok(OpenAiActivitySummary {
+            input_tokens,
+            cached_input_tokens,
+            output_tokens,
+            request_count,
+            cache_hit_rate,
+        })
+    }
+
+    #[allow(
+        dead_code,
+        reason = "backend query prepared for the upcoming dashboard UI"
+    )]
+    pub fn openai_daily_activity(
+        &self,
+        provider_id: &str,
+        start_time: i64,
+        end_time: i64,
+    ) -> Result<Vec<OpenAiDailyActivity>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let mut statement = connection.prepare("SELECT bucket_start, SUM(input_tokens), SUM(cached_input_tokens), SUM(output_tokens), SUM(request_count) FROM openai_usage_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3 GROUP BY bucket_start ORDER BY bucket_start")?;
+        statement
+            .query_map(params![provider_id, start_time, end_time], |row| {
+                Ok(OpenAiDailyActivity {
+                    bucket_start: row.get(0)?,
+                    input_tokens: row.get(1)?,
+                    cached_input_tokens: row.get(2)?,
+                    output_tokens: row.get(3)?,
+                    request_count: row.get(4)?,
+                })
+            })?
+            .collect()
+    }
+
+    #[allow(
+        dead_code,
+        reason = "backend query prepared for the upcoming dashboard UI"
+    )]
+    pub fn openai_daily_spend(
+        &self,
+        provider_id: &str,
+        start_time: i64,
+        end_time: i64,
+    ) -> Result<Vec<OpenAiDailySpend>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let mut statement = connection.prepare("SELECT bucket_start, SUM(amount), currency FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3 GROUP BY bucket_start, currency ORDER BY bucket_start")?;
+        statement
+            .query_map(params![provider_id, start_time, end_time], |row| {
+                Ok(OpenAiDailySpend {
+                    bucket_start: row.get(0)?,
+                    amount: row.get(1)?,
+                    currency: row.get(2)?,
+                })
+            })?
+            .collect()
+    }
+
+    #[allow(
+        dead_code,
+        reason = "backend query prepared for the upcoming dashboard UI"
+    )]
+    pub fn openai_project_spend(
+        &self,
+        provider_id: &str,
+        start_time: i64,
+        end_time: i64,
+    ) -> Result<Vec<OpenAiProjectSpend>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let mut statement = connection.prepare("SELECT project_id, SUM(amount), currency FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3 GROUP BY project_id, currency ORDER BY SUM(amount) DESC")?;
+        statement
+            .query_map(params![provider_id, start_time, end_time], |row| {
+                Ok(OpenAiProjectSpend {
+                    project_id: row.get(0)?,
+                    amount: row.get(1)?,
+                    currency: row.get(2)?,
+                })
+            })?
+            .collect()
+    }
+
+    pub fn list_openai_credit_events(
+        &self,
+        provider_id: &str,
+    ) -> Result<Vec<OpenAiCreditEvent>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let mut statement = connection.prepare("SELECT id, event_type, effective_at, amount, note FROM openai_credit_events WHERE provider_id = ?1 ORDER BY effective_at, id")?;
+        statement
+            .query_map([provider_id], |row| {
+                let effective_at: i64 = row.get(2)?;
+                let date = chrono::DateTime::from_timestamp(effective_at, 0)
+                    .map(|value| value.date_naive().to_string())
+                    .unwrap_or_default();
+                Ok(OpenAiCreditEvent {
+                    id: row.get(0)?,
+                    event_type: row.get(1)?,
+                    date,
+                    amount: row.get(3)?,
+                    note: row.get(4)?,
+                })
+            })?
+            .collect()
+    }
+
+    pub fn add_openai_credit_event(
+        &self,
+        provider_id: &str,
+        event_type: &str,
+        effective_at: i64,
+        amount: f64,
+        note: &str,
+    ) -> Result<(), rusqlite::Error> {
+        self.connection()?.execute("INSERT INTO openai_credit_events (provider_id, event_type, effective_at, amount, note) VALUES (?1, ?2, ?3, ?4, ?5)", params![provider_id, event_type, effective_at, amount, note])?;
+        Ok(())
+    }
+
+    pub fn delete_openai_credit_event(
+        &self,
+        provider_id: &str,
+        event_id: i64,
+    ) -> Result<(), rusqlite::Error> {
+        self.connection()?.execute(
+            "DELETE FROM openai_credit_events WHERE id = ?1 AND provider_id = ?2",
+            params![event_id, provider_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn openai_credit_totals(
+        &self,
+        provider_id: &str,
+    ) -> Result<Option<(f64, f64)>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let start: Option<i64> = connection.query_row(
+            "SELECT MIN(effective_at) FROM openai_credit_events WHERE provider_id = ?1",
+            [provider_id],
+            |row| row.get(0),
+        )?;
+        let Some(start) = start else {
+            return Ok(None);
+        };
+        let credit = connection.query_row("SELECT COALESCE(SUM(CASE WHEN event_type = 'purchase' THEN amount ELSE -amount END), 0) FROM openai_credit_events WHERE provider_id = ?1", [provider_id], |row| row.get(0))?;
+        let spent = self.openai_cost_since(provider_id, start)?;
+        Ok(Some((credit, spent)))
+    }
+
+    fn replace_openai_cost_ledger(
+        &self,
+        transaction: &rusqlite::Transaction<'_>,
+        provider_id: &str,
+        ledger: &OpenAiCostLedger,
+    ) -> Result<(), rusqlite::Error> {
+        transaction.execute(
+            "DELETE FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start <= ?3",
+            params![provider_id, ledger.start_time, ledger.end_time],
+        )?;
+        let mut statement = transaction.prepare("INSERT INTO openai_cost_ledger_entries (provider_id, bucket_start, bucket_end, amount, currency, project_id, api_key_id, line_item) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")?;
+        for entry in &ledger.entries {
+            statement.execute(params![
+                provider_id,
+                entry.bucket_start,
+                entry.bucket_end,
+                entry.amount,
+                entry.currency,
+                entry.project_id,
+                entry.api_key_id,
+                entry.line_item
+            ])?;
+        }
+        drop(statement);
+        Ok(())
+    }
+
+    fn replace_openai_usage_ledger(
+        &self,
+        transaction: &rusqlite::Transaction<'_>,
+        provider_id: &str,
+        ledger: &OpenAiUsageLedger,
+    ) -> Result<(), rusqlite::Error> {
+        transaction.execute(
+            "DELETE FROM openai_usage_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start <= ?3",
+            params![provider_id, ledger.start_time, ledger.end_time],
+        )?;
+        let mut statement = transaction.prepare("INSERT INTO openai_usage_ledger_entries (provider_id, bucket_start, bucket_end, input_tokens, cached_input_tokens, output_tokens, request_count, project_id, model) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)")?;
+        for entry in &ledger.entries {
+            statement.execute(params![
+                provider_id,
+                entry.bucket_start,
+                entry.bucket_end,
+                entry.input_tokens,
+                entry.cached_input_tokens,
+                entry.output_tokens,
+                entry.request_count,
+                entry.project_id,
+                entry.model,
+            ])?;
+        }
+        drop(statement);
         Ok(())
     }
 
@@ -237,4 +483,167 @@ fn now() -> String {
         .unwrap_or_default()
         .as_secs()
         .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{
+        NewProvider, OpenAiCostLedgerEntry, OpenAiUsageLedgerEntry, UsageSnapshot,
+    };
+
+    fn test_database() -> (Database, std::path::PathBuf, String) {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("clearquota-database-{unique}.sqlite"));
+        let database = Database::open(&path).unwrap();
+        database.migrate().unwrap();
+        let account = database
+            .create_account(NewAccount {
+                project_id: "gcp-test".to_owned(),
+            })
+            .unwrap();
+        database
+            .add_provider(
+                &account.id,
+                NewProvider {
+                    provider_type: "openai".to_owned(),
+                    display_name: "OpenAI".to_owned(),
+                    secret_ref: "OPENAI_ADMIN_KEY".to_owned(),
+                    plan: None,
+                    monthly_quota: None,
+                    daily_quota: None,
+                    apify_monthly_credit_allowance: None,
+                },
+            )
+            .unwrap();
+        let provider_id = database.list_providers(&account.id).unwrap()[0].id.clone();
+        (database, path, provider_id)
+    }
+
+    #[test]
+    fn stores_and_aggregates_openai_activity_and_project_spend() {
+        let (database, path, provider_id) = test_database();
+        database
+            .save_snapshot(&UsageSnapshot {
+                provider_id: provider_id.clone(),
+                timestamp: "200".to_owned(),
+                status: "ok".to_owned(),
+                cost: Some(3.5),
+                currency: Some("usd".to_owned()),
+                metrics: vec![],
+                openai_cost_ledger: Some(OpenAiCostLedger {
+                    start_time: 100,
+                    end_time: 200,
+                    entries: vec![
+                        OpenAiCostLedgerEntry {
+                            bucket_start: 100,
+                            bucket_end: 200,
+                            amount: 2.5,
+                            currency: "usd".to_owned(),
+                            project_id: Some("proj_a".to_owned()),
+                            api_key_id: None,
+                            line_item: Some("completions".to_owned()),
+                        },
+                        OpenAiCostLedgerEntry {
+                            bucket_start: 100,
+                            bucket_end: 200,
+                            amount: 1.0,
+                            currency: "usd".to_owned(),
+                            project_id: None,
+                            api_key_id: None,
+                            line_item: Some("completions".to_owned()),
+                        },
+                    ],
+                }),
+                openai_usage_ledger: Some(OpenAiUsageLedger {
+                    start_time: 100,
+                    end_time: 200,
+                    entries: vec![
+                        OpenAiUsageLedgerEntry {
+                            bucket_start: 100,
+                            bucket_end: 200,
+                            input_tokens: 800,
+                            cached_input_tokens: 400,
+                            output_tokens: 200,
+                            request_count: 3,
+                            project_id: Some("proj_a".to_owned()),
+                            model: Some("gpt-test".to_owned()),
+                        },
+                        OpenAiUsageLedgerEntry {
+                            bucket_start: 100,
+                            bucket_end: 200,
+                            input_tokens: 200,
+                            cached_input_tokens: 100,
+                            output_tokens: 50,
+                            request_count: 2,
+                            project_id: None,
+                            model: Some("gpt-test".to_owned()),
+                        },
+                    ],
+                }),
+            })
+            .unwrap();
+
+        assert_eq!(
+            database
+                .openai_activity_summary(&provider_id, 100, 201)
+                .unwrap(),
+            OpenAiActivitySummary {
+                input_tokens: 1000,
+                cached_input_tokens: 500,
+                output_tokens: 250,
+                request_count: 5,
+                cache_hit_rate: Some(50.0),
+            }
+        );
+        assert_eq!(
+            database
+                .openai_daily_activity(&provider_id, 100, 201)
+                .unwrap(),
+            vec![OpenAiDailyActivity {
+                bucket_start: 100,
+                input_tokens: 1000,
+                cached_input_tokens: 500,
+                output_tokens: 250,
+                request_count: 5,
+            }]
+        );
+        assert_eq!(
+            database
+                .openai_project_spend(&provider_id, 100, 201)
+                .unwrap(),
+            vec![
+                OpenAiProjectSpend {
+                    project_id: Some("proj_a".to_owned()),
+                    amount: 2.5,
+                    currency: "usd".to_owned(),
+                },
+                OpenAiProjectSpend {
+                    project_id: None,
+                    amount: 1.0,
+                    currency: "usd".to_owned(),
+                },
+            ]
+        );
+        assert_eq!(
+            database.openai_daily_spend(&provider_id, 100, 201).unwrap(),
+            vec![OpenAiDailySpend {
+                bucket_start: 100,
+                amount: 3.5,
+                currency: "usd".to_owned(),
+            }]
+        );
+
+        drop(database);
+        for database_path in [
+            path.clone(),
+            path.with_extension("sqlite-shm"),
+            path.with_extension("sqlite-wal"),
+        ] {
+            let _ = std::fs::remove_file(database_path);
+        }
+    }
 }
