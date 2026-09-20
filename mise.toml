@@ -1,0 +1,44 @@
+[tools]
+rust = "stable"
+"cargo:bacon" = "latest"
+
+[env]
+RUST_LOG = "info"
+USAGE_DASH_PORT = 5050
+
+[tasks.install]
+description = "Fetch Rust dependencies and install the standalone Tailwind CLI"
+run = '''
+cargo fetch
+mkdir -p .tools
+if [ ! -x .tools/tailwindcss ]; then
+  case "$(uname -m)" in
+    arm64) tailwind_asset="tailwindcss-macos-arm64" ;;
+    x86_64) tailwind_asset="tailwindcss-macos-x64" ;;
+    *) echo "Unsupported macOS architecture: $(uname -m)"; exit 1 ;;
+  esac
+  curl -fsSL -o .tools/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/${tailwind_asset}"
+  chmod +x .tools/tailwindcss
+fi
+mise run css:build
+'''
+
+[tasks."css:build"]
+description = "Compile Tailwind CSS without npm or node_modules"
+run = ".tools/tailwindcss -i static/css/input.css -o static/css/output.css --minify"
+
+[tasks.check]
+description = "Format-check and type-check the application"
+run = "cargo fmt --check && cargo check"
+
+[tasks.test]
+description = "Run the Rust test suite"
+run = "cargo test --locked"
+
+[tasks.start]
+description = "Build CSS and start the localhost dashboard"
+run = "mise run css:build && cargo run"
+
+[tasks.dev]
+description = "Build CSS, then watch Rust changes and restart the dashboard with Bacon"
+run = "mise run css:build && bacon run"

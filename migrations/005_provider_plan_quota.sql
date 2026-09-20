@@ -1,0 +1,2 @@
+ALTER TABLE providers ADD COLUMN plan TEXT NOT NULL DEFAULT '';
+ALTER TABLE providers ADD COLUMN monthly_quota INTEGER NOT NULL DEFAULT 0 CHECK (monthly_quota >= 0);
