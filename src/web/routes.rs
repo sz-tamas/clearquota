@@ -12,7 +12,7 @@ use chrono::{Datelike, NaiveDate, Utc};
 use crate::{
     models::{
         Account, NewAccount, NewOpenAiCreditEvent, NewProvider, OpenAiCreditEvent, ProviderConfig,
-        UpdateAccount, UpdateProvider, UsageSnapshot,
+        RunLog, UpdateAccount, UpdateProvider, UsageSnapshot,
     },
     secrets::{begin_authentication, check_application_default_credentials},
     web::AppState,
@@ -21,6 +21,7 @@ use crate::{
 pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", get(index))
+        .route("/runlogs", get(run_logs))
         .route("/health", get(|| async { "ok" }))
         .route(
             "/authentication/validate",
@@ -56,6 +57,18 @@ async fn index(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppEr
         .active_account()?
         .is_some_and(|account| account.auth_status == "ready");
     render_dashboard_with_auth_validation(&state, validate_authentication)
+}
+
+async fn run_logs(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+    let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
+    let logs = state.database.list_run_logs(&account.id)?;
+    Ok(Html(
+        RunLogsTemplate {
+            account,
+            logs: logs.into_iter().map(run_log_view).collect(),
+        }
+        .render()?,
+    ))
 }
 
 async fn validate_saved_authentication(
@@ -331,7 +344,13 @@ async fn refresh_all_providers(
         match normalize_secret_reference(&account.project_id, &provider.secret_ref) {
             Ok(reference) => provider.secret_ref = reference,
             Err(_) => {
-                state.database.set_provider_refresh_error(&provider.id, Some("Secret name or Secret Manager reference is invalid for the active Google project."))?;
+                let message = "Secret name or Secret Manager reference is invalid for the active Google project.";
+                state
+                    .database
+                    .set_provider_refresh_error(&provider.id, Some(message))?;
+                state
+                    .database
+                    .save_run_log(&provider.id, "failed", message)?;
                 failed += 1;
                 continue;
             }
@@ -340,8 +359,16 @@ async fn refresh_all_providers(
             state
                 .database
                 .set_provider_refresh_error(&provider.id, Some(&error))?;
+            state
+                .database
+                .save_run_log(&provider.id, "failed", &error)?;
             failed += 1;
         } else {
+            state.database.save_run_log(
+                &provider.id,
+                "succeeded",
+                "Usage refresh completed successfully.",
+            )?;
             succeeded += 1;
         }
     }
@@ -742,6 +769,23 @@ fn format_count(value: i64) -> String {
     formatted
 }
 
+fn run_log_view(log: RunLog) -> RunLogView {
+    let created_at = log
+        .created_at
+        .parse::<i64>()
+        .ok()
+        .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp, 0))
+        .map(|timestamp| timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+        .unwrap_or(log.created_at);
+    RunLogView {
+        provider_name: log.provider_name,
+        provider_type: log.provider_type,
+        created_at,
+        status: log.status,
+        message: log.message,
+    }
+}
+
 fn provider_for_active_account(state: &AppState, id: &str) -> Result<ProviderConfig, AppError> {
     let provider = state
         .database
@@ -885,6 +929,20 @@ struct DashboardTemplate {
     account: Option<Account>,
     cards_html: String,
     validate_authentication: bool,
+}
+#[derive(Template)]
+#[template(path = "pages/run_logs.html")]
+struct RunLogsTemplate {
+    account: Account,
+    logs: Vec<RunLogView>,
+}
+
+struct RunLogView {
+    provider_name: String,
+    provider_type: String,
+    created_at: String,
+    status: String,
+    message: String,
 }
 #[derive(Template)]
 #[template(path = "partials/auth_required.html")]

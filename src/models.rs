@@ -38,6 +38,17 @@ pub struct UsageSnapshot {
     pub openai_usage_ledger: Option<OpenAiUsageLedger>,
 }
 
+/// A sanitized record of one provider refresh attempt.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RunLog {
+    pub id: i64,
+    pub provider_name: String,
+    pub provider_type: String,
+    pub created_at: String,
+    pub status: String,
+    pub message: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct OpenAiUsageLedger {
     pub start_time: i64,

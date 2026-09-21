@@ -5,7 +5,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use crate::models::{
     Account, NewAccount, NewProvider, OpenAiActivitySummary, OpenAiCostLedger, OpenAiCreditEvent,
     OpenAiDailyActivity, OpenAiDailySpend, OpenAiProjectSpend, OpenAiUsageLedger, ProviderConfig,
-    UpdateAccount, UpdateProvider, UsageSnapshot,
+    RunLog, UpdateAccount, UpdateProvider, UsageSnapshot,
 };
 
 #[derive(Clone)]
@@ -75,6 +75,7 @@ impl Database {
         connection.execute_batch(include_str!("../migrations/009_openai_cost_ledger.sql"))?;
         connection.execute_batch(include_str!("../migrations/011_openai_credit_events.sql"))?;
         connection.execute_batch(include_str!("../migrations/012_openai_usage_ledger.sql"))?;
+        connection.execute_batch(include_str!("../migrations/013_run_logs.sql"))?;
         Self::compact_provider_secret_names(&connection)
     }
 
@@ -230,6 +231,38 @@ impl Database {
         }
         transaction.commit()?;
         Ok(())
+    }
+
+    pub fn save_run_log(
+        &self,
+        provider_id: &str,
+        status: &str,
+        message: &str,
+    ) -> Result<(), rusqlite::Error> {
+        self.connection()?.execute(
+            "INSERT INTO run_logs (provider_id, created_at, status, message) VALUES (?1, ?2, ?3, ?4)",
+            params![provider_id, now(), status, message],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_run_logs(&self, account_id: &str) -> Result<Vec<RunLog>, rusqlite::Error> {
+        let connection = self.connection()?;
+        let mut statement = connection.prepare(
+            "SELECT run_logs.id, providers.display_name, providers.provider_type, run_logs.created_at, run_logs.status, run_logs.message FROM run_logs INNER JOIN providers ON providers.id = run_logs.provider_id WHERE providers.account_id = ?1 ORDER BY run_logs.id DESC",
+        )?;
+        statement
+            .query_map([account_id], |row| {
+                Ok(RunLog {
+                    id: row.get(0)?,
+                    provider_name: row.get(1)?,
+                    provider_type: row.get(2)?,
+                    created_at: row.get(3)?,
+                    status: row.get(4)?,
+                    message: row.get(5)?,
+                })
+            })?
+            .collect()
     }
 
     pub fn openai_cost_since(
@@ -644,5 +677,27 @@ mod tests {
         ] {
             let _ = std::fs::remove_file(database_path);
         }
+    }
+
+    #[test]
+    fn stores_run_logs_for_the_active_accounts_providers() {
+        let (database, path, provider_id) = test_database();
+        database
+            .save_run_log(
+                &provider_id,
+                "succeeded",
+                "Usage refresh completed successfully.",
+            )
+            .unwrap();
+
+        let account_id = database.active_account().unwrap().unwrap().id;
+        let logs = database.list_run_logs(&account_id).unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0].provider_name, "OpenAI");
+        assert_eq!(logs[0].provider_type, "openai");
+        assert_eq!(logs[0].status, "succeeded");
+        assert_eq!(logs[0].message, "Usage refresh completed successfully.");
+
+        std::fs::remove_file(path).ok();
     }
 }
