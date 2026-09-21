@@ -4,6 +4,7 @@ use askama::Template;
 use axum::{
     Form, Router,
     extract::{Path, State},
+    http::HeaderMap,
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
 };
@@ -49,26 +50,49 @@ pub fn router() -> Router<Arc<AppState>> {
         )
         .route("/providers/{id}/delete", post(delete_provider))
         .route("/providers/{id}/delete/confirm", get(delete_confirmation))
+        .fallback(not_found)
 }
 
-async fn index(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn not_found() -> Result<(axum::http::StatusCode, Html<String>), AppError> {
+    Ok((
+        axum::http::StatusCode::NOT_FOUND,
+        Html(NotFoundTemplate.render()?),
+    ))
+}
+
+async fn index(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Html<String>, AppError> {
     let validate_authentication = state
         .database
         .active_account()?
-        .is_some_and(|account| account.auth_status == "ready");
+        .is_some_and(|account| account.auth_status == "ready")
+        && !is_htmx_navigation(&headers);
     render_dashboard_with_auth_validation(&state, validate_authentication)
 }
 
-async fn run_logs(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn run_logs(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Html<String>, AppError> {
     let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
     let logs = state.database.list_run_logs(&account.id)?;
     Ok(Html(
         RunLogsTemplate {
+            validate_authentication: account.auth_status == "ready"
+                && !is_htmx_navigation(&headers),
             account,
             logs: logs.into_iter().map(run_log_view).collect(),
         }
         .render()?,
     ))
+}
+
+fn is_htmx_navigation(headers: &HeaderMap) -> bool {
+    headers
+        .get("HX-Request")
+        .is_some_and(|value| value == "true")
 }
 
 async fn validate_saved_authentication(
@@ -935,6 +959,7 @@ struct DashboardTemplate {
 struct RunLogsTemplate {
     account: Account,
     logs: Vec<RunLogView>,
+    validate_authentication: bool,
 }
 
 struct RunLogView {
@@ -944,6 +969,9 @@ struct RunLogView {
     status: String,
     message: String,
 }
+#[derive(Template)]
+#[template(path = "pages/not_found.html")]
+struct NotFoundTemplate;
 #[derive(Template)]
 #[template(path = "partials/auth_required.html")]
 struct AuthRequiredTemplate {
