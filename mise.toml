@@ -31,14 +31,26 @@ run = ".tools/tailwindcss -i static/css/input.css -o static/css/output.css --min
 description = "Format-check and type-check the application"
 run = "cargo fmt --check && cargo check"
 
+[tasks."lint"]
+description = "Lints Rust code"
+raw = true
+run = "cargo fmt --all --check"
+
+[tasks."fmt"]
+description = "Formats Rust code"
+raw = true
+run = "cargo fmt --all"
+
 [tasks.test]
 description = "Run the Rust test suite"
 run = "cargo test --locked"
 
 [tasks.start]
 description = "Build CSS and start the localhost dashboard"
+depends = ["lint"]
 run = "mise run css:build && cargo run"
 
 [tasks.dev]
 description = "Build CSS, then watch Rust changes and restart the dashboard with Bacon"
+depends = ["lint"]
 run = "mise run css:build && bacon run"

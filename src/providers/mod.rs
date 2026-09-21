@@ -13,47 +13,43 @@ pub use resend::ResendProvider;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
-    #[error("this provider is not implemented yet")]
-    Unsupported,
-    #[error("provider request failed")]
-    Request,
-    #[error(
-        "Your Resend API key has Sending access only. Please create a Full access API key to retrieve usage statistics."
-    )]
-    ResendSendingAccessOnly,
-    #[error("provider returned an invalid usage response")]
-    InvalidResponse,
-    #[error("OpenAI costs response did not contain usable monthly cost data")]
-    OpenAiCostsInvalidResponse,
-    #[error("OpenAI spend alerts response did not contain a 100% monthly threshold")]
-    OpenAiSpendAlertInvalidResponse,
-    #[error("OpenAI completions usage response did not contain usable activity data")]
-    OpenAiUsageInvalidResponse,
+	#[error("this provider is not implemented yet")]
+	Unsupported,
+	#[error("provider request failed")]
+	Request,
+	#[error(
+		"Your Resend API key has Sending access only. Please create a Full access API key to retrieve usage statistics."
+	)]
+	ResendSendingAccessOnly,
+	#[error("provider returned an invalid usage response")]
+	InvalidResponse,
+	#[error("OpenAI costs response did not contain usable monthly cost data")]
+	OpenAiCostsInvalidResponse,
+	#[error("OpenAI spend alerts response did not contain a 100% monthly threshold")]
+	OpenAiSpendAlertInvalidResponse,
+	#[error("OpenAI completions usage response did not contain usable activity data")]
+	OpenAiUsageInvalidResponse,
 }
 
 #[async_trait]
 pub trait Provider: Send + Sync {
-    async fn collect(
-        &self,
-        config: &ProviderConfig,
-        secret: &SecretString,
-    ) -> Result<UsageSnapshot, ProviderError>;
+	async fn collect(&self, config: &ProviderConfig, secret: &SecretString) -> Result<UsageSnapshot, ProviderError>;
 }
 
 #[derive(Default)]
 pub struct ProviderRegistry;
 
 impl ProviderRegistry {
-    pub async fn collect(
-        &self,
-        config: &ProviderConfig,
-        secret: &SecretString,
-    ) -> Result<UsageSnapshot, ProviderError> {
-        match config.provider_type.as_str() {
-            "apify" => ApifyProvider.collect(config, secret).await,
-            "openai" => OpenAiProvider.collect(config, secret).await,
-            "resend" => ResendProvider.collect(config, secret).await,
-            _ => Err(ProviderError::Unsupported),
-        }
-    }
+	pub async fn collect(
+		&self,
+		config: &ProviderConfig,
+		secret: &SecretString,
+	) -> Result<UsageSnapshot, ProviderError> {
+		match config.provider_type.as_str() {
+			"apify" => ApifyProvider.collect(config, secret).await,
+			"openai" => OpenAiProvider.collect(config, secret).await,
+			"resend" => ResendProvider.collect(config, secret).await,
+			_ => Err(ProviderError::Unsupported),
+		}
+	}
 }
