@@ -3,17 +3,18 @@ use std::sync::Arc;
 use askama::Template;
 use axum::{
 	Form, Router,
-	extract::{Path, State},
+	extract::{Path, Query, State},
 	http::HeaderMap,
 	response::{Html, IntoResponse, Redirect},
 	routing::{get, post},
 };
 use chrono::{Datelike, NaiveDate, Utc};
+use serde::Deserialize;
 
 use crate::{
 	models::{
 		Account, NewAccount, NewOpenAiCreditEvent, NewProvider, OpenAiCreditEvent, ProviderConfig, RunLog,
-		UpdateAccount, UpdateProvider, UsageSnapshot,
+		UpdateAccount, UpdateProvider, UsagePeriod, UsageSnapshot,
 	},
 	secrets::{begin_authentication, check_application_default_credentials},
 	web::AppState,
@@ -47,17 +48,105 @@ pub fn router() -> Router<Arc<AppState>> {
 		.fallback(not_found)
 }
 
+#[derive(Default, Deserialize)]
+struct MonthQuery {
+	month: Option<String>,
+}
+
+fn current_period() -> UsagePeriod {
+	let today = Utc::now().date_naive();
+	period_for_month(today.year(), today.month(), true).expect("the current UTC month is valid")
+}
+
+fn selected_period(value: Option<&str>) -> Result<UsagePeriod, AppError> {
+	let current = current_period();
+	let Some(value) = value else {
+		return Ok(current);
+	};
+	let date = NaiveDate::parse_from_str(&format!("{value}-01"), "%Y-%m-%d").map_err(|_| AppError::BadRequest)?;
+	let period = period_for_month(date.year(), date.month(), false).ok_or(AppError::BadRequest)?;
+	if period.start > current.start {
+		return Err(AppError::BadRequest);
+	}
+	Ok(UsagePeriod {
+		is_current: period.start == current.start,
+		..period
+	})
+}
+
+fn period_for_month(year: i32, month: u32, is_current: bool) -> Option<UsagePeriod> {
+	let start = NaiveDate::from_ymd_opt(year, month, 1)?;
+	let (next_year, next_month) = if month == 12 { (year + 1, 1) } else { (year, month + 1) };
+	let end = NaiveDate::from_ymd_opt(next_year, next_month, 1)?;
+	Some(UsagePeriod {
+		start: start.and_hms_opt(0, 0, 0)?.and_utc().timestamp(),
+		end: end.and_hms_opt(0, 0, 0)?.and_utc().timestamp(),
+		is_current,
+	})
+}
+
+fn previous_period(period: UsagePeriod) -> UsagePeriod {
+	let start = chrono::DateTime::from_timestamp(period.start, 0)
+		.expect("stored period timestamp is valid")
+		.date_naive();
+	let (year, month) = if start.month() == 1 {
+		(start.year() - 1, 12)
+	} else {
+		(start.year(), start.month() - 1)
+	};
+	period_for_month(year, month, false).expect("adjacent month is valid")
+}
+
+fn next_period(period: UsagePeriod) -> UsagePeriod {
+	let end = chrono::DateTime::from_timestamp(period.end, 0)
+		.expect("stored period timestamp is valid")
+		.date_naive();
+	let current = current_period();
+	let next = period_for_month(end.year(), end.month(), false).expect("adjacent month is valid");
+	UsagePeriod {
+		is_current: next.start == current.start,
+		..next
+	}
+}
+
+fn period_label(period: UsagePeriod) -> String {
+	chrono::DateTime::from_timestamp(period.start, 0)
+		.expect("stored period timestamp is valid")
+		.format("%B %Y")
+		.to_string()
+}
+
+fn month_url(period: UsagePeriod) -> String {
+	let month = chrono::DateTime::from_timestamp(period.start, 0)
+		.expect("stored period timestamp is valid")
+		.format("%Y-%m");
+	format!("/?month={month}")
+}
+
+fn month_from_url(url: &str) -> Option<&str> {
+	url.split_once('?')
+		.and_then(|(_, query)| query.split('&').find_map(|parameter| parameter.strip_prefix("month=")))
+}
+
 async fn not_found() -> Result<(axum::http::StatusCode, Html<String>), AppError> {
 	Ok((axum::http::StatusCode::NOT_FOUND, Html(NotFoundTemplate.render()?)))
 }
 
-async fn index(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Result<Html<String>, AppError> {
+async fn index(
+	State(state): State<Arc<AppState>>,
+	headers: HeaderMap,
+	Query(query): Query<MonthQuery>,
+) -> Result<Html<String>, AppError> {
 	let validate_authentication = state
 		.database
 		.active_account()?
 		.is_some_and(|account| account.auth_status == "ready")
 		&& !is_htmx_navigation(&headers);
-	render_dashboard_with_auth_validation(&state, validate_authentication)
+	render_dashboard_with_auth_validation(
+		&state,
+		validate_authentication,
+		selected_period(query.month.as_deref())?,
+	)
 }
 
 async fn run_logs(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Result<Html<String>, AppError> {
@@ -86,14 +175,12 @@ async fn validate_saved_authentication(
 	headers: HeaderMap,
 ) -> Result<Html<String>, AppError> {
 	refresh_saved_authentication(&state).await?;
-	if headers
-		.get("HX-Current-URL")
-		.and_then(|value| value.to_str().ok())
-		.is_some_and(|url| url.ends_with("/runlogs"))
-	{
+	let current_url = headers.get("HX-Current-URL").and_then(|value| value.to_str().ok());
+	if current_url.is_some_and(|url| url.split('?').next().is_some_and(|path| path.ends_with("/runlogs"))) {
 		return render_run_logs(&state, false);
 	}
-	render_dashboard(&state)
+	let month = current_url.and_then(month_from_url);
+	render_dashboard_with_auth_validation(&state, false, selected_period(month)?)
 }
 
 async fn create_account(
@@ -340,9 +427,13 @@ async fn refresh_all_providers(State(state): State<Arc<AppState>>) -> Result<Htm
 	Ok(Html(RefreshCompleteTemplate { succeeded, failed }.render()?))
 }
 
-async fn provider_list(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn provider_list(
+	State(state): State<Arc<AppState>>,
+	Query(query): Query<MonthQuery>,
+) -> Result<Html<String>, AppError> {
+	let period = selected_period(query.month.as_deref())?;
 	let cards_html = match state.database.active_account()? {
-		Some(account) => render_cards(&state, &account.id)?,
+		Some(account) => render_cards(&state, &account.id, period)?,
 		None => String::new(),
 	};
 	Ok(Html(ProviderListTemplate { cards_html }.render()?))
@@ -355,12 +446,13 @@ async fn skip_alerts(State(state): State<Arc<AppState>>) -> Result<Html<String>,
 }
 
 fn render_dashboard(state: &AppState) -> Result<Html<String>, AppError> {
-	render_dashboard_with_auth_validation(state, false)
+	render_dashboard_with_auth_validation(state, false, current_period())
 }
 
 fn render_dashboard_with_auth_validation(
 	state: &AppState,
 	validate_authentication: bool,
+	period: UsagePeriod,
 ) -> Result<Html<String>, AppError> {
 	let account = state.database.active_account()?;
 	let show_dashboard_skeleton = account
@@ -370,13 +462,16 @@ fn render_dashboard_with_auth_validation(
 	// metadata remains part of the dashboard state, ready for the header UI.
 	let _project_name = account.as_ref().and_then(|item| item.project_name.as_deref());
 	let cards_html = match (&account, show_dashboard_skeleton) {
-		(Some(account), false) => render_cards(state, &account.id)?,
+		(Some(account), false) => render_cards(state, &account.id, period)?,
 		_ => String::new(),
 	};
 	Ok(Html(
 		DashboardTemplate {
 			account,
 			cards_html,
+			selected_month: period_label(period),
+			previous_month_url: month_url(previous_period(period)),
+			next_month_url: (!period.is_current).then(|| month_url(next_period(period))),
 			show_dashboard_skeleton,
 			validate_authentication,
 		}
@@ -403,15 +498,15 @@ async fn refresh_saved_authentication(state: &AppState) -> Result<(), AppError> 
 	Ok(())
 }
 
-fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> {
+fn render_cards(state: &AppState, account_id: &str, period: UsagePeriod) -> Result<String, AppError> {
 	state
 		.database
 		.list_providers(account_id)?
 		.into_iter()
 		.map(|provider| {
-			let snapshot = state.database.latest_snapshot(&provider.id)?;
-			let openai_activity = openai_activity_summary(state, &provider)?;
-			let openai_period = openai_period_label(&provider);
+			let snapshot = state.database.snapshot_for_period(&provider.id, period)?;
+			let openai_activity = openai_activity_summary(state, &provider, period)?;
+			let openai_period = openai_period_label(&provider, period);
 			let mut openai_spend_limit = openai_spend_limit_summary(&provider, snapshot.as_ref());
 			if let (Some(spend_limit), Some(activity)) = (openai_spend_limit.as_mut(), openai_activity.as_ref()) {
 				spend_limit.projects.clone_from(&activity.projects);
@@ -420,7 +515,11 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
 			ProviderCardTemplate {
 				apify_credit: apify_credit_summary(&provider, snapshot.as_ref()),
 				openai_spend_limit,
-				openai_credit: openai_credit_summary(&provider, state.database.openai_credit_totals(&provider.id)?),
+				openai_credit: if period.is_current {
+					openai_credit_summary(&provider, state.database.openai_credit_totals(&provider.id)?)
+				} else {
+					None
+				},
 				openai_activity,
 				openai_period,
 				resend_quota: resend_quota_summary(&provider, snapshot.as_ref()),
@@ -435,34 +534,35 @@ fn render_cards(state: &AppState, account_id: &str) -> Result<String, AppError> 
 		.map(|cards| cards.join("\n"))
 }
 
-fn openai_period_label(provider: &ProviderConfig) -> Option<String> {
+fn openai_period_label(provider: &ProviderConfig, period: UsagePeriod) -> Option<String> {
 	if provider.provider_type != "openai" {
 		return None;
 	}
-	let now = Utc::now();
+	let start = chrono::DateTime::from_timestamp(period.start, 0)?;
+	let last_day = if period.is_current {
+		Utc::now().day()
+	} else {
+		chrono::DateTime::from_timestamp(period.end - 1, 0)?.day()
+	};
 	Some(format!(
-		"Current month · {} 1–{}, {} UTC",
-		now.format("%B"),
-		now.day(),
-		now.year()
+		"{} · {} 1–{}, {} UTC",
+		if period.is_current { "Current month" } else { "Selected month" },
+		start.format("%B"),
+		last_day,
+		start.year()
 	))
 }
 
 fn openai_activity_summary(
 	state: &AppState,
 	provider: &ProviderConfig,
+	period: UsagePeriod,
 ) -> Result<Option<OpenAiActivitySummaryView>, AppError> {
 	if provider.provider_type != "openai" {
 		return Ok(None);
 	}
-	let now = Utc::now();
-	let start = now
-		.date_naive()
-		.with_day(1)
-		.and_then(|date| date.and_hms_opt(0, 0, 0))
-		.map(|date| date.and_utc().timestamp())
-		.ok_or(AppError::BadRequest)?;
-	let end = now.timestamp() + 1;
+	let start = period.start;
+	let end = if period.is_current { Utc::now().timestamp() + 1 } else { period.end };
 	let daily_activity = state.database.openai_daily_activity(&provider.id, start, end)?;
 	let daily_spend = state.database.openai_daily_spend(&provider.id, start, end)?;
 	let project_spend = state.database.openai_project_spend(&provider.id, start, end)?;
@@ -712,7 +812,7 @@ fn provider_for_active_account(state: &AppState, id: &str) -> Result<ProviderCon
 	Ok(provider)
 }
 
-async fn refresh_provider_usage(state: &AppState, provider: &ProviderConfig) -> Result<UsageSnapshot, String> {
+async fn refresh_provider_usage(state: &AppState, provider: &ProviderConfig) -> Result<(), String> {
 	let secret = state
         .secret_resolver
         .resolve(&provider.secret_ref)
@@ -725,20 +825,31 @@ async fn refresh_provider_usage(state: &AppState, provider: &ProviderConfig) -> 
             crate::secrets::SecretError::AccessFailed => "Google Cloud could not access this Secret Manager secret. Check that the ADC identity has Secret Manager Secret Accessor on this secret and that the Secret Manager API is enabled.".to_owned(),
             crate::secrets::SecretError::InvalidPayload => "Google Cloud returned a Secret Manager value that could not be read safely.".to_owned(),
         })?;
-	let snapshot = state
-		.providers
-		.collect(provider, &secret)
-		.await
-		.map_err(|error| format!("{} refresh failed: {error}", provider.display_name))?;
-	state
-		.database
-		.save_snapshot(&snapshot)
-		.map_err(|_| "Usage was collected but could not be saved to SQLite.".to_owned())?;
+	let current = current_period();
+	let periods = [current, previous_period(current)];
+	let mut errors = Vec::new();
+	for period in periods {
+		match state.providers.collect(provider, &secret, period).await {
+			Ok(snapshot) => {
+				if state.database.save_snapshot(&snapshot).is_err() {
+					errors.push(format!("{} could not be saved to SQLite", period_label(period)));
+				}
+			}
+			Err(error) => errors.push(format!("{}: {error}", period_label(period))),
+		}
+	}
+	if !errors.is_empty() {
+		return Err(format!(
+			"{} refresh was partial: {}",
+			provider.display_name,
+			errors.join("; ")
+		));
+	}
 	state
 		.database
 		.set_provider_refresh_error(&provider.id, None)
 		.map_err(|_| "Usage was collected but refresh status could not be saved.".to_owned())?;
-	Ok(snapshot)
+	Ok(())
 }
 
 fn valid_project_id(value: &str) -> bool {
@@ -826,6 +937,23 @@ mod tests {
 		assert_eq!(sparkline_points(&[4.0]), "0,20 100,20");
 		assert_eq!(sparkline_points(&[0.0, 10.0]), "0.0,36.0 100.0,4.0");
 	}
+
+	#[test]
+	fn builds_calendar_month_boundaries_across_years_and_leap_days() {
+		let december = period_for_month(2025, 12, false).unwrap();
+		let january = next_period(december);
+		assert_eq!(period_label(january), "January 2026");
+		assert_eq!(previous_period(january), december);
+
+		let february = period_for_month(2024, 2, false).unwrap();
+		assert_eq!(february.end - february.start, 29 * 24 * 60 * 60);
+	}
+
+	#[test]
+	fn preserves_selected_month_during_authentication_validation() {
+		assert_eq!(month_from_url("http://127.0.0.1:5050/?month=2026-08"), Some("2026-08"));
+		assert_eq!(month_from_url("http://127.0.0.1:5050/"), None);
+	}
 }
 
 #[derive(Template)]
@@ -833,6 +961,9 @@ mod tests {
 struct DashboardTemplate {
 	account: Option<Account>,
 	cards_html: String,
+	selected_month: String,
+	previous_month_url: String,
+	next_month_url: Option<String>,
 	show_dashboard_skeleton: bool,
 	validate_authentication: bool,
 }

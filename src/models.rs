@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UsagePeriod {
+	pub start: i64,
+	pub end: i64,
+	pub is_current: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
 	pub id: String,
@@ -12,6 +19,7 @@ pub struct ProviderConfig {
 	pub monthly_quota: i64,
 	pub daily_quota: i64,
 	pub apify_monthly_credit_allowance: f64,
+	#[allow(dead_code, reason = "used to define the retained OpenAI credit history boundary")]
 	pub openai_credit_start: Option<i64>,
 }
 
@@ -32,6 +40,9 @@ pub struct UsageSnapshot {
 	pub cost: Option<f64>,
 	pub currency: Option<String>,
 	pub metrics: Vec<Metric>,
+	pub period: UsagePeriod,
+	/// Sanitized provider-specific period context, never a raw API response.
+	pub metadata: serde_json::Value,
 	/// Sanitized OpenAI cost records to persist apart from the aggregate snapshot.
 	pub openai_cost_ledger: Option<OpenAiCostLedger>,
 	/// Sanitized OpenAI activity records to persist apart from the aggregate snapshot.

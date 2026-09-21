@@ -67,6 +67,12 @@ impl Database {
 		connection.execute_batch(include_str!("../migrations/011_openai_credit_events.sql"))?;
 		connection.execute_batch(include_str!("../migrations/012_openai_usage_ledger.sql"))?;
 		connection.execute_batch(include_str!("../migrations/013_run_logs.sql"))?;
+		connection.execute_batch(include_str!("../migrations/014_monthly_usage_snapshots.sql"))?;
+		match connection.execute_batch(include_str!("../migrations/015_monthly_usage_metadata.sql")) {
+			Ok(()) => (),
+			Err(error) if error.to_string().contains("duplicate column name") => (),
+			Err(error) => return Err(error),
+		};
 		Self::compact_provider_secret_names(&connection)
 	}
 
@@ -192,15 +198,24 @@ impl Database {
 		Ok(())
 	}
 
-	pub fn latest_snapshot(&self, provider_id: &str) -> Result<Option<UsageSnapshot>, rusqlite::Error> {
-		self.connection()?.query_row("SELECT timestamp, status, cost, currency, raw_metrics_json FROM usage_snapshots WHERE provider_id = ?1 ORDER BY id DESC LIMIT 1", [provider_id], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(), openai_cost_ledger: None, openai_usage_ledger: None })).optional()
+	pub fn snapshot_for_period(
+		&self,
+		provider_id: &str,
+		period: crate::models::UsagePeriod,
+	) -> Result<Option<UsageSnapshot>, rusqlite::Error> {
+		self.connection()?.query_row("SELECT refreshed_at, status, cost, currency, metrics_json, period_end, metadata_json FROM monthly_usage_snapshots WHERE provider_id = ?1 AND period_start = ?2", params![provider_id, period.start], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(), period: crate::models::UsagePeriod { start: period.start, end: row.get(5)?, is_current: period.is_current }, metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(), openai_cost_ledger: None, openai_usage_ledger: None })).optional()
 	}
 
 	pub fn save_snapshot(&self, snapshot: &UsageSnapshot) -> Result<(), rusqlite::Error> {
 		let metrics = serde_json::to_string(&snapshot.metrics).unwrap_or_else(|_| "[]".to_owned());
+		let metadata = serde_json::to_string(&snapshot.metadata).unwrap_or_else(|_| "{}".to_owned());
 		let mut connection = self.connection()?;
 		let transaction = connection.transaction()?;
 		transaction.execute("INSERT INTO usage_snapshots (provider_id, timestamp, status, cost, currency, raw_metrics_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![snapshot.provider_id, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics])?;
+		transaction.execute(
+			"INSERT INTO monthly_usage_snapshots (provider_id, period_start, period_end, refreshed_at, status, cost, currency, metrics_json, metadata_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ON CONFLICT(provider_id, period_start) DO UPDATE SET period_end = excluded.period_end, refreshed_at = excluded.refreshed_at, status = excluded.status, cost = excluded.cost, currency = excluded.currency, metrics_json = excluded.metrics_json, metadata_json = excluded.metadata_json",
+			params![snapshot.provider_id, snapshot.period.start, snapshot.period.end, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics, metadata],
+		)?;
 		if let Some(ledger) = &snapshot.openai_cost_ledger {
 			self.replace_openai_cost_ledger(&transaction, &snapshot.provider_id, ledger)?;
 		}
@@ -397,7 +412,7 @@ impl Database {
 		ledger: &OpenAiCostLedger,
 	) -> Result<(), rusqlite::Error> {
 		transaction.execute(
-			"DELETE FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start <= ?3",
+			"DELETE FROM openai_cost_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3",
 			params![provider_id, ledger.start_time, ledger.end_time],
 		)?;
 		let mut statement = transaction.prepare("INSERT INTO openai_cost_ledger_entries (provider_id, bucket_start, bucket_end, amount, currency, project_id, api_key_id, line_item) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")?;
@@ -424,7 +439,7 @@ impl Database {
 		ledger: &OpenAiUsageLedger,
 	) -> Result<(), rusqlite::Error> {
 		transaction.execute(
-			"DELETE FROM openai_usage_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start <= ?3",
+			"DELETE FROM openai_usage_ledger_entries WHERE provider_id = ?1 AND bucket_start >= ?2 AND bucket_start < ?3",
 			params![provider_id, ledger.start_time, ledger.end_time],
 		)?;
 		let mut statement = transaction.prepare("INSERT INTO openai_usage_ledger_entries (provider_id, bucket_start, bucket_end, input_tokens, cached_input_tokens, output_tokens, request_count, project_id, model) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)")?;
@@ -509,6 +524,12 @@ mod tests {
 				cost: Some(3.5),
 				currency: Some("usd".to_owned()),
 				metrics: vec![],
+				period: crate::models::UsagePeriod {
+					start: 100,
+					end: 201,
+					is_current: false,
+				},
+				metadata: serde_json::json!({}),
 				openai_cost_ledger: Some(OpenAiCostLedger {
 					start_time: 100,
 					end_time: 200,
@@ -630,6 +651,70 @@ mod tests {
 		assert_eq!(logs[0].provider_type, "openai");
 		assert_eq!(logs[0].status, "succeeded");
 		assert_eq!(logs[0].message, "Usage refresh completed successfully.");
+
+		std::fs::remove_file(path).ok();
+	}
+
+	#[test]
+	fn upserts_one_month_without_removing_older_months() {
+		let (database, path, provider_id) = test_database();
+		let save = |start, end, cost| {
+			database
+				.save_snapshot(&UsageSnapshot {
+					provider_id: provider_id.clone(),
+					timestamp: format!("{end}"),
+					status: "ok".to_owned(),
+					cost: Some(cost),
+					currency: Some("usd".to_owned()),
+					metrics: vec![],
+					period: crate::models::UsagePeriod {
+						start,
+						end,
+						is_current: false,
+					},
+					metadata: serde_json::json!({}),
+					openai_cost_ledger: None,
+					openai_usage_ledger: None,
+				})
+				.unwrap();
+		};
+		save(100, 200, 1.0);
+		save(200, 300, 2.0);
+		save(100, 200, 1.5);
+
+		for (start, end, expected) in [(100, 200, 1.5), (200, 300, 2.0)] {
+			let snapshot = database
+				.snapshot_for_period(
+					&provider_id,
+					crate::models::UsagePeriod {
+						start,
+						end,
+						is_current: false,
+					},
+				)
+				.unwrap()
+				.unwrap();
+			assert_eq!(snapshot.cost, Some(expected));
+		}
+
+		database
+			.connection()
+			.unwrap()
+			.execute("DELETE FROM monthly_usage_snapshots", [])
+			.unwrap();
+		database.migrate().unwrap();
+		let backfilled = database
+			.snapshot_for_period(
+				&provider_id,
+				crate::models::UsagePeriod {
+					start: 0,
+					end: 2_678_400,
+					is_current: false,
+				},
+			)
+			.unwrap()
+			.unwrap();
+		assert_eq!(backfilled.cost, Some(2.0));
 
 		std::fs::remove_file(path).ok();
 	}

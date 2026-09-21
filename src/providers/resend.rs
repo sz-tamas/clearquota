@@ -1,7 +1,7 @@
 use super::{Provider, ProviderError};
-use crate::models::{Metric, ProviderConfig, UsageSnapshot};
+use crate::models::{Metric, ProviderConfig, UsagePeriod, UsageSnapshot};
 use async_trait::async_trait;
-use chrono::{Datelike, Utc};
+use chrono::Utc;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 pub struct ResendProvider;
@@ -24,9 +24,24 @@ struct ResendErrorResponse {
 }
 #[async_trait]
 impl Provider for ResendProvider {
-	async fn collect(&self, config: &ProviderConfig, secret: &SecretString) -> Result<UsageSnapshot, ProviderError> {
-		let end = Utc::now().date_naive();
-		let start = end.with_day(1).ok_or(ProviderError::InvalidResponse)?;
+	async fn collect(
+		&self,
+		config: &ProviderConfig,
+		secret: &SecretString,
+		period: UsagePeriod,
+	) -> Result<UsageSnapshot, ProviderError> {
+		let start = chrono::DateTime::from_timestamp(period.start, 0)
+			.ok_or(ProviderError::InvalidResponse)?
+			.date_naive();
+		let exclusive_end = chrono::DateTime::from_timestamp(period.end, 0)
+			.ok_or(ProviderError::InvalidResponse)?
+			.date_naive();
+		let today = Utc::now().date_naive();
+		let end = if period.is_current {
+			today
+		} else {
+			exclusive_end.pred_opt().ok_or(ProviderError::InvalidResponse)?
+		};
 		let client = reqwest::Client::new();
 		let monthly = fetch(
 			&client,
@@ -35,8 +50,12 @@ impl Provider for ResendProvider {
 			end.to_string(),
 			"sent,received,delivered,bounced,complained,failed",
 		);
-		let daily = fetch(&client, secret, end.to_string(), end.to_string(), "sent,received");
-		let (monthly, daily) = tokio::try_join!(monthly, daily)?;
+		let monthly = monthly.await?;
+		let daily = if period.is_current {
+			Some(fetch(&client, secret, today.to_string(), today.to_string(), "sent,received").await?)
+		} else {
+			None
+		};
 		let mut metrics = Vec::new();
 		add(
 			&mut metrics,
@@ -74,30 +93,32 @@ impl Provider for ResendProvider {
 			"Emails failed (current month)",
 			monthly.totals.failed,
 		);
-		add(
-			&mut metrics,
-			"emails_sent_today",
-			"Emails sent (today)",
-			daily.totals.sent,
-		);
-		add(
-			&mut metrics,
-			"emails_received_today",
-			"Emails received (today)",
-			daily.totals.received,
-		);
+		if let Some(daily) = daily {
+			add(
+				&mut metrics,
+				"emails_sent_today",
+				"Emails sent (today)",
+				daily.totals.sent,
+			);
+			add(
+				&mut metrics,
+				"emails_received_today",
+				"Emails received (today)",
+				daily.totals.received,
+			);
+			quota(
+				&mut metrics,
+				"daily",
+				daily.totals.sent.unwrap_or(0.0) + daily.totals.received.unwrap_or(0.0),
+				config.daily_quota,
+				&config.plan,
+			);
+		}
 		quota(
 			&mut metrics,
 			"monthly",
 			monthly.totals.sent.unwrap_or(0.0) + monthly.totals.received.unwrap_or(0.0),
 			config.monthly_quota,
-			&config.plan,
-		);
-		quota(
-			&mut metrics,
-			"daily",
-			daily.totals.sent.unwrap_or(0.0) + daily.totals.received.unwrap_or(0.0),
-			config.daily_quota,
 			&config.plan,
 		);
 		Ok(UsageSnapshot {
@@ -107,6 +128,8 @@ impl Provider for ResendProvider {
 			cost: None,
 			currency: None,
 			metrics,
+			period,
+			metadata: serde_json::json!({}),
 			openai_cost_ledger: None,
 			openai_usage_ledger: None,
 		})

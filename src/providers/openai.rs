@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use chrono::{Datelike, Utc};
+use chrono::Utc;
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::Value;
 
 use crate::models::{
 	Metric, OpenAiCostLedger, OpenAiCostLedgerEntry, OpenAiUsageLedger, OpenAiUsageLedgerEntry, ProviderConfig,
-	UsageSnapshot,
+	UsagePeriod, UsageSnapshot,
 };
 
 use super::{Provider, ProviderError};
@@ -14,21 +14,18 @@ pub struct OpenAiProvider;
 
 #[async_trait]
 impl Provider for OpenAiProvider {
-	async fn collect(&self, config: &ProviderConfig, secret: &SecretString) -> Result<UsageSnapshot, ProviderError> {
+	async fn collect(
+		&self,
+		config: &ProviderConfig,
+		secret: &SecretString,
+		period: UsagePeriod,
+	) -> Result<UsageSnapshot, ProviderError> {
 		let now = Utc::now();
-		let month_start = now
-			.date_naive()
-			.with_day(1)
-			.ok_or(ProviderError::InvalidResponse)?
-			.and_hms_opt(0, 0, 0)
-			.ok_or(ProviderError::InvalidResponse)?
-			.and_utc()
-			.timestamp();
-		let ledger_start = config.openai_credit_start.unwrap_or(month_start).min(month_start);
+		let range_end = if period.is_current { now.timestamp().min(period.end) } else { period.end };
 		let client = reqwest::Client::new();
-		let costs = fetch_costs(&client, secret, ledger_start, now.timestamp());
+		let costs = fetch_costs(&client, secret, period.start, range_end);
 		let alerts = fetch_spend_alerts(&client, secret);
-		let usage = fetch_completions_usage(&client, secret, month_start, now.timestamp());
+		let usage = fetch_completions_usage(&client, secret, period.start, range_end);
 		let (costs, alert, usage) = tokio::join!(costs, alerts, usage);
 		let costs = costs?;
 		let mut status = "ok";
@@ -55,7 +52,7 @@ impl Provider for OpenAiProvider {
 		let monthly_amount: f64 = costs
 			.entries
 			.iter()
-			.filter(|entry| entry.bucket_start >= month_start)
+			.filter(|entry| entry.bucket_start >= period.start && entry.bucket_start < period.end)
 			.map(|entry| entry.amount)
 			.sum();
 		eprintln!(
@@ -72,14 +69,16 @@ impl Provider for OpenAiProvider {
 			cost: Some(monthly_amount),
 			currency: Some(costs.currency.clone()),
 			metrics: openai_metrics(monthly_amount, limit, &costs.currency, usage.as_deref()),
+			period,
+			metadata: serde_json::json!({}),
 			openai_cost_ledger: Some(OpenAiCostLedger {
-				start_time: ledger_start,
-				end_time: now.timestamp(),
+				start_time: period.start,
+				end_time: range_end,
 				entries: costs.entries,
 			}),
 			openai_usage_ledger: usage.map(|usage| OpenAiUsageLedger {
-				start_time: month_start,
-				end_time: now.timestamp(),
+				start_time: period.start,
+				end_time: range_end,
 				entries: usage,
 			}),
 		})

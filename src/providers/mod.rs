@@ -5,7 +5,7 @@ mod resend;
 use async_trait::async_trait;
 use secrecy::SecretString;
 
-use crate::models::{ProviderConfig, UsageSnapshot};
+use crate::models::{ProviderConfig, UsagePeriod, UsageSnapshot};
 
 pub use apify::ApifyProvider;
 pub use openai::OpenAiProvider;
@@ -33,7 +33,12 @@ pub enum ProviderError {
 
 #[async_trait]
 pub trait Provider: Send + Sync {
-	async fn collect(&self, config: &ProviderConfig, secret: &SecretString) -> Result<UsageSnapshot, ProviderError>;
+	async fn collect(
+		&self,
+		config: &ProviderConfig,
+		secret: &SecretString,
+		period: UsagePeriod,
+	) -> Result<UsageSnapshot, ProviderError>;
 }
 
 #[derive(Default)]
@@ -44,11 +49,12 @@ impl ProviderRegistry {
 		&self,
 		config: &ProviderConfig,
 		secret: &SecretString,
+		period: UsagePeriod,
 	) -> Result<UsageSnapshot, ProviderError> {
 		match config.provider_type.as_str() {
-			"apify" => ApifyProvider.collect(config, secret).await,
-			"openai" => OpenAiProvider.collect(config, secret).await,
-			"resend" => ResendProvider.collect(config, secret).await,
+			"apify" => ApifyProvider.collect(config, secret, period).await,
+			"openai" => OpenAiProvider.collect(config, secret, period).await,
+			"resend" => ResendProvider.collect(config, secret, period).await,
 			_ => Err(ProviderError::Unsupported),
 		}
 	}
