@@ -1,6 +1,7 @@
 [tools]
 rust = "stable"
 "cargo:bacon" = "latest"
+"pipx:djlint" = "latest"
 
 [env]
 RUST_LOG = "info"
@@ -29,17 +30,17 @@ run = ".tools/tailwindcss -i static/css/input.css -o static/css/output.css --min
 
 [tasks.check]
 description = "Format-check and type-check the application"
-run = "cargo fmt --check && cargo check"
+run = "mise run lint && cargo check"
 
 [tasks."lint"]
-description = "Lints Rust code"
+description = "Checks Rust and Askama template formatting"
 raw = true
-run = "cargo fmt --all --check"
+run = "cargo fmt --all --check && djlint templates --check"
 
 [tasks."fmt"]
-description = "Formats Rust code"
+description = "Formats Rust code and Askama templates"
 raw = true
-run = "cargo fmt --all"
+run = "cargo fmt --all && djlint templates --reformat --quiet"
 
 [tasks.test]
 description = "Run the Rust test suite"

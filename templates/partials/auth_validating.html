@@ -1,9 +1,19 @@
-<div id="auth-validation" class="fixed inset-0 z-30 grid place-items-center bg-slate-950/25 p-4" hx-post="/authentication/validate" hx-trigger="load" hx-target="#app" hx-select="#app" hx-swap="outerHTML">
-  <section class="w-full max-w-xl rounded-2xl bg-white p-7 text-center shadow-2xl" role="status" aria-live="polite">
-    <div class="mx-auto grid size-12 place-items-center rounded-full bg-violet-50 text-brand">
-      <i class="size-6 animate-spin" data-lucide="loader-circle" aria-hidden="true"></i>
-    </div>
-    <p class="mt-5 text-sm font-semibold text-ink">Validating Google authentication</p>
-    <p class="mt-2 text-sm text-slate-500">Checking local Application Default Credentials…</p>
-  </section>
+<div id="auth-validation"
+     class="fixed inset-0 z-30 grid place-items-center bg-slate-950/25 p-4"
+     hx-post="/authentication/validate"
+     hx-trigger="load"
+     hx-target="#app"
+     hx-select="#app"
+     hx-swap="outerHTML">
+    <section class="w-full max-w-xl rounded-2xl bg-white p-7 text-center shadow-2xl"
+             role="status"
+             aria-live="polite">
+        <div class="mx-auto grid size-12 place-items-center rounded-full bg-violet-50 text-brand">
+            <i class="size-6 animate-spin"
+               data-lucide="loader-circle"
+               aria-hidden="true"></i>
+        </div>
+        <p class="mt-5 text-sm font-semibold text-ink">Validating Google authentication</p>
+        <p class="mt-2 text-sm text-slate-500">Checking local Application Default Credentials…</p>
+    </section>
 </div>

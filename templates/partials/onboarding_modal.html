@@ -1,4 +1,23 @@
 {% match account %}
 {% when None %}
-<div id="onboarding-layer" class="fixed inset-0 z-20 grid place-items-center bg-slate-950/25 p-4"><section class="w-full max-w-xl rounded-2xl bg-white p-7 shadow-2xl"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Secure setup</p><h2 class="mt-1 text-xl font-bold">Set up your dashboard</h2><form class="mt-6" hx-post="/onboarding/account" hx-target="#onboarding-layer" hx-swap="outerHTML"><label class="mb-2 block text-sm font-semibold" for="project_id">Google Cloud project ID or number</label><input class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" id="project_id" name="project_id" required placeholder="my-gcp-project or 111111111111"><p class="mt-2 text-xs text-slate-500">Use either identifier shown in Google Cloud. The project name is not needed.</p><button class="mt-6 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" type="submit">Save project</button></form></section></div>
+<div id="onboarding-layer"
+     class="fixed inset-0 z-20 grid place-items-center bg-slate-950/25 p-4">
+    <section class="w-full max-w-xl rounded-2xl bg-white p-7 shadow-2xl">
+        <p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Secure setup</p>
+        <h2 class="mt-1 text-xl font-bold">Set up your dashboard</h2>
+        <form class="mt-6"
+              hx-post="/onboarding/account"
+              hx-target="#onboarding-layer"
+              hx-swap="outerHTML">
+            <label class="mb-2 block text-sm font-semibold" for="project_id">Google Cloud project ID or number</label><input class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
+       id="project_id"
+       name="project_id"
+       required
+       placeholder="my-gcp-project or 111111111111">
+            <p class="mt-2 text-xs text-slate-500">Use either identifier shown in Google Cloud. The project name is not needed.</p>
+            <button class="mt-6 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+                    type="submit">Save project</button>
+        </form>
+    </section>
+</div>
 {% when Some with (_) %}{% endmatch %}
