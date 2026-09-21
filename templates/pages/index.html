@@ -74,11 +74,10 @@
    hx-push-url="true"
    aria-label="Next month"><i class="size-4" data-lucide="chevron-right" aria-hidden="true"></i></a>{% when None %}<span class="grid size-9 place-items-center rounded-lg text-slate-300"
       aria-hidden="true"><i class="size-4" data-lucide="chevron-right"></i></span>{% endmatch %}</nav><button class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
+        type="button"
         data-refresh-all
-        hx-post="{{ refresh_url }}"
-        hx-sync="this:drop"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button></div>{% if show_dashboard_skeleton %}{% include "partials/provider_list_skeleton.html" %}{% else %}{% include "partials/provider_list.html" %}{% endif %}</main></div>
+        data-refresh-url="{{ refresh_url }}"
+        data-refresh-period="{{ selected_month }}"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button></div>{% if show_dashboard_skeleton %}{% include "partials/provider_list_skeleton.html" %}{% else %}{% include "partials/provider_list.html" %}{% endif %}</main></div>
 </div>
 {% include "partials/onboarding_modal.html" %}
 {% match account %}{% when Some with (account) %}
@@ -93,25 +92,29 @@
 <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
 <script src="/static/dashboard-motion.js"></script>
 <script>
+{
   const { animate, stagger } = Motion;
-  const renderLucideIcons = () => window.lucide?.createIcons({ attrs: { 'stroke-width': 1.75 } });
-  renderLucideIcons();
+  const renderDashboardIcons = () => window.lucide?.createIcons({ attrs: { 'stroke-width': 1.75 } });
+  renderDashboardIcons();
   const isMobileSidebar = () => window.innerWidth < 800;
   const setSidebarOpen = (open) => { const sidebar = document.querySelector('[data-sidebar]'); const backdrop = document.querySelector('[data-sidebar-backdrop]'); const toggle = document.querySelector('[data-sidebar-toggle]'); if (!sidebar || !backdrop || !toggle) return; const showDrawer = open && isMobileSidebar(); sidebar.classList.toggle('-translate-x-full', !showDrawer); sidebar.toggleAttribute('inert', isMobileSidebar() && !showDrawer); sidebar.setAttribute('aria-hidden', String(isMobileSidebar() && !showDrawer)); backdrop.classList.toggle('hidden', !showDrawer); toggle.setAttribute('aria-expanded', String(showDrawer)); };
   setSidebarOpen(false);
   document.addEventListener('click', (event) => { if (event.target.closest('[data-sidebar-toggle]')) { const isOpen = document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded') === 'true'; setSidebarOpen(!isOpen); } else if (event.target.closest('[data-sidebar-backdrop], [data-sidebar-nav]')) setSidebarOpen(false); });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarOpen(false); }); window.addEventListener('resize', () => setSidebarOpen(false));
   const refreshDialog = (title, body, spinner) => `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="refresh-dialog-title">${spinner ? '<div class="mx-auto grid size-14 place-items-center rounded-full bg-brand/10"><i class="size-7 animate-spin text-brand" data-lucide="loader-circle" aria-hidden="true"></i></div>' : ''}<p class="mt-5 text-xs font-bold tracking-[.15em] text-brand uppercase">Refreshing providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">${title}</h2><p class="mt-3 text-sm leading-6 text-slate-600">${body}</p>${spinner ? '' : '<div class="mt-7"><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" onclick="document.getElementById(\'provider-dialog\').innerHTML=\'\'">Close</button></div>'}</section></div>`;
-  const renderRefreshDialog = (title, body, spinner) => { document.getElementById('provider-dialog').innerHTML = refreshDialog(title, body, spinner); renderLucideIcons(); };
-  document.body.addEventListener('htmx:beforeRequest', (event) => { if (event.detail.elt.matches('[data-refresh-all]')) renderRefreshDialog('Refreshing…', 'Fetching the latest usage from your providers. This can take a moment.', true); });
-  const showRefreshError = (event) => { if (event.detail.elt.matches('[data-refresh-all]')) renderRefreshDialog('Provider refresh failed', 'We could not complete the refresh. Please try again.', false); };
+  const refreshConfirmation = (period, url) => `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="refresh-dialog-title"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Refresh providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">Refresh ${period}?</h2><p class="mt-3 text-sm leading-6 text-slate-600">Fetch available usage for this month from every configured provider. Existing stored data for the month will be updated.</p><div class="mt-7 flex justify-end gap-3"><button class="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('provider-dialog').innerHTML=''">Cancel</button><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" data-refresh-submit hx-post="${url}" hx-sync="this:drop" hx-target="#provider-dialog" hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Start refresh</button></div></section></div>`;
+  const renderRefreshDialog = (title, body, spinner) => { document.getElementById('provider-dialog').innerHTML = refreshDialog(title, body, spinner); renderDashboardIcons(); };
+  document.body.addEventListener('click', (event) => { const button = event.target.closest('[data-refresh-all]'); if (!button) return; const dialog = document.getElementById('provider-dialog'); dialog.innerHTML = refreshConfirmation(button.dataset.refreshPeriod, button.dataset.refreshUrl); htmx.process(dialog); renderDashboardIcons(); });
+  document.body.addEventListener('htmx:beforeRequest', (event) => { if (event.detail.elt.matches('[data-refresh-submit]')) renderRefreshDialog('Refreshing…', 'Fetching the selected month from your providers. This can take a moment.', true); });
+  const showRefreshError = (event) => { if (event.detail.elt.matches('[data-refresh-submit]')) renderRefreshDialog('Provider refresh failed', 'We could not complete the refresh. Please try again.', false); };
   document.body.addEventListener('htmx:responseError', showRefreshError); document.body.addEventListener('htmx:sendError', showRefreshError);
   const layoutProviderCards = (grid) => { const styles = getComputedStyle(grid); const rowHeight = Number.parseFloat(styles.gridAutoRows); const rowGap = Number.parseFloat(styles.rowGap); if (!rowHeight || Number.isNaN(rowGap)) return; grid.querySelectorAll('[data-provider-card]').forEach((card) => { card.style.gridRowEnd = `span ${Math.ceil((card.offsetHeight + rowGap) / (rowHeight + rowGap))}`; }); };
   const scheduleProviderCardLayout = () => { requestAnimationFrame(() => document.querySelectorAll('[data-provider-grid]').forEach(layoutProviderCards)); };
   const observeProviderCardGrid = (grid) => { if (grid.dataset.providerGridObserved) return; grid.dataset.providerGridObserved = 'true'; new ResizeObserver(scheduleProviderCardLayout).observe(grid); };
   const animateProviderCards = () => { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; const cards = [...document.querySelectorAll('[data-provider-card]:not([data-motion-animated])')]; cards.forEach((card) => card.dataset.motionAnimated = 'true'); if (cards.length) animate(cards, { opacity: [0, 1], y: [16, 0], scale: [0.985, 1] }, { delay: stagger(0.07), duration: 0.38, ease: [0.22, 1, 0.36, 1] }); };
   const initializeProviderCardGrids = () => { document.querySelectorAll('[data-provider-grid]').forEach(observeProviderCardGrid); scheduleProviderCardLayout(); animateProviderCards(); };
-  initializeProviderCardGrids(); document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids); document.body.addEventListener('htmx:afterSettle', renderLucideIcons); document.body.addEventListener('htmx:afterSettle', () => setSidebarOpen(false)); window.addEventListener('resize', scheduleProviderCardLayout);
+  initializeProviderCardGrids(); document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids); document.body.addEventListener('htmx:afterSettle', renderDashboardIcons); document.body.addEventListener('htmx:afterSettle', () => setSidebarOpen(false)); window.addEventListener('resize', scheduleProviderCardLayout);
+}
 </script>
 </body>
 </html>
