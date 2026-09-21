@@ -4,7 +4,7 @@
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="mb-1 flex items-center gap-1.5 text-xs font-semibold text-brand">
-                {% if provider.provider_type == "apify" %}<i class="size-4" data-lucide="boxes" aria-hidden="true"></i>Apify{% else if provider.provider_type == "openai" %}<i class="size-4" data-lucide="bot" aria-hidden="true"></i>OpenAI{% else if provider.provider_type == "resend" %}<i class="size-4" data-lucide="send" aria-hidden="true"></i>Resend{% else %}<i class="size-4" data-lucide="blocks" aria-hidden="true"></i>{{ provider.provider_type }}{% endif %}
+                {% if provider.provider_type == "apify" %}<img class="size-4" src="/static/images/providers/apify.svg" alt="">Apify{% else if provider.provider_type == "openai" %}<img class="size-4" src="/static/images/providers/openai.svg" alt="">OpenAI{% else if provider.provider_type == "resend" %}<img class="size-4" src="/static/images/providers/resend.svg" alt="">Resend{% else %}<i class="size-4" data-lucide="blocks" aria-hidden="true"></i>{{ provider.provider_type }}{% endif %}
             </p>
             <h2 class="text-lg font-bold tracking-tight text-ink">{{ provider.display_name }}</h2>
         </div>

@@ -109,38 +109,59 @@
                                 <p class="border-b border-slate-100 px-3 py-2 text-xs font-semibold tracking-[.08em] text-slate-400 uppercase">Choose a provider</p>
                                 <ul class="grid grid-cols-2 gap-1 p-2 text-sm"
                                     aria-labelledby="add-provider-menu-button">
-                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
-   href="/providers/new?provider=apify"
-   hx-get="/providers/new?provider=apify"
-   hx-target="#provider-dialog"
-   hx-swap="innerHTML"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>Apify</a></li>
-                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
-   href="/providers/new?provider=openai"
-   hx-get="/providers/new?provider=openai"
-   hx-target="#provider-dialog"
-   hx-swap="innerHTML"><i class="size-4" data-lucide="bot" aria-hidden="true"></i>OpenAI</a></li>
-                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
-   href="/providers/new?provider=resend"
-   hx-get="/providers/new?provider=resend"
-   hx-target="#provider-dialog"
-   hx-swap="innerHTML"><i class="size-4" data-lucide="send" aria-hidden="true"></i>Resend</a></li>
                                     <li>
-                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
-                                                type="button"
-                                                disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="cloud" aria-hidden="true"></i>AWS</button>
+                                        <a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+                                           href="/providers/new?provider=apify"
+                                           hx-get="/providers/new?provider=apify"
+                                           hx-target="#provider-dialog"
+                                           hx-swap="innerHTML">
+                                        <img class="size-4" src="/static/images/providers/apify.svg" alt="">Apify</a>
+                                    </li>
+                                    <li>
+                                        <a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+                                           href="/providers/new?provider=openai"
+                                           hx-get="/providers/new?provider=openai"
+                                           hx-target="#provider-dialog"
+                                           hx-swap="innerHTML">
+                                        <img class="size-4" src="/static/images/providers/openai.svg" alt="">OpenAI</a>
+                                    </li>
+                                    <li>
+                                        <a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+                                           href="/providers/new?provider=resend"
+                                           hx-get="/providers/new?provider=resend"
+                                           hx-target="#provider-dialog"
+                                           hx-swap="innerHTML">
+                                        <img class="size-4" src="/static/images/providers/resend.svg" alt="">Resend</a>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="cloud-sun" aria-hidden="true"></i>Cloudflare</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/aws.svg"
+                                                 alt="">AWS
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="database" aria-hidden="true"></i>Upstash</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/cloudflare.svg"
+                                                 alt="">Cloudflare
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/upstash.svg"
+                                                 alt="">Upstash
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
@@ -152,7 +173,11 @@
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="bolt" aria-hidden="true"></i>Supabase</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/supabase.svg"
+                                                 alt="">Supabase
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
@@ -164,25 +189,41 @@
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="brain" aria-hidden="true"></i>Claude</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/claude.svg"
+                                                 alt="">Claude
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="sparkles" aria-hidden="true"></i>Gemini</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/gemini.svg"
+                                                 alt="">Gemini
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="github" aria-hidden="true"></i>GitHub</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/github.svg"
+                                                 alt="">GitHub
+                                        </button>
                                     </li>
                                     <li>
                                         <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
                                                 type="button"
                                                 disabled
-                                                title="Coming soon"><i class="size-4" data-lucide="git-fork" aria-hidden="true"></i>GitLab</button>
+                                                title="Coming soon">
+                                            <img class="size-4 opacity-60"
+                                                 src="/static/images/providers/gitlab.svg"
+                                                 alt="">GitLab
+                                        </button>
                                     </li>
                                 </ul>
                                 <p class="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">Dimmed providers are coming soon.</p>
