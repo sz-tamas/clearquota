@@ -16,6 +16,33 @@
   body { @apply min-h-screen bg-canvas font-sans text-ink antialiased; }
 }
 
+/* Dialog layers must cover the desktop navigation as well as the page content. */
+#onboarding-layer,
+#auth-dialog,
+#auth-validation,
+#provider-dialog > .fixed {
+  z-index: 50;
+}
+
+/* Keep dialogs within the visible viewport; only overflowing dialog content scrolls. */
+#onboarding-layer > section,
+#auth-dialog > section,
+#auth-validation > section,
+#provider-dialog > .fixed > section {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+/* Keep the title and close control visible while a provider dialog body scrolls. */
+#provider-dialog > .fixed > section > div:first-child {
+  position: sticky;
+  top: -1.75rem;
+  z-index: 1;
+  margin: -1.75rem -1.75rem 0;
+  padding: 1.75rem 1.75rem 1rem;
+  background: white;
+}
+
 /* Hide the legacy image-based header icon if one is rendered. */
 header div > div:last-child > button:first-child > img { display: none; }
 header div > div:last-child > button:first-child::after {
