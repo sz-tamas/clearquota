@@ -32,6 +32,17 @@ function setProviderMenuOpen(open) {
   toggle?.setAttribute("aria-expanded", String(open));
 }
 
+function renderDashboardRefreshConfirmation(button) {
+  const dialog = document.querySelector("#provider-dialog");
+  if (!dialog) return;
+
+  dialog.innerHTML = `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="refresh-dialog-title"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Refresh providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">Refresh ${button.dataset.refreshPeriod}?</h2><p class="mt-3 text-sm leading-6 text-slate-600">Fetch available usage for this month from every configured provider. Existing stored data for the month will be updated.</p><div class="mt-7 flex justify-end gap-3"><button class="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('provider-dialog').innerHTML=''">Cancel</button><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" data-refresh-submit hx-post="${button.dataset.refreshUrl}" hx-sync="this:drop" hx-target="#provider-dialog" hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Start refresh</button></div></section></div>`;
+  window.htmx?.process(dialog);
+  renderLucideIcons();
+}
+
+window.openDashboardRefreshConfirmation = renderDashboardRefreshConfirmation;
+
 function navigate(path, pushHistory) {
   pendingNavigation = { path, pushHistory };
   window.htmx?.ajax("GET", path, {
