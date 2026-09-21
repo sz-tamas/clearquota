@@ -142,13 +142,26 @@ async fn not_found() -> Result<(axum::http::StatusCode, Html<String>), AppError>
 	Ok((axum::http::StatusCode::NOT_FOUND, Html(NotFoundTemplate.render()?)))
 }
 
-async fn overview(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn overview(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Result<Html<String>, AppError> {
+	render_overview(&state, !is_htmx_navigation(&headers))
+}
+
+fn render_overview(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
 	let account = state.database.active_account()?;
+	let validate_authentication =
+		account.as_ref().is_some_and(|account| account.auth_status == "ready") && validate_authentication;
 	let summary = account
 		.as_ref()
-		.map(|account| overview_summary(&state, &account.id, current_period()))
+		.map(|account| overview_summary(state, &account.id, current_period()))
 		.transpose()?;
-	Ok(Html(OverviewTemplate { account, summary }.render()?))
+	Ok(Html(
+		OverviewTemplate {
+			account,
+			summary,
+			validate_authentication,
+		}
+		.render()?,
+	))
 }
 
 fn overview_summary(state: &AppState, account_id: &str, period: UsagePeriod) -> Result<OverviewSummary, AppError> {
@@ -320,6 +333,9 @@ async fn validate_saved_authentication(
 	}
 	if current_url.is_some_and(|url| url.split('?').next().is_some_and(|path| path.ends_with("/providers"))) {
 		return render_providers_page(&state, false);
+	}
+	if current_url.is_some_and(|url| url.split('?').next().is_some_and(|path| path.ends_with('/'))) {
+		return render_overview(&state, false);
 	}
 	let month = current_url.and_then(month_from_url);
 	render_dashboard_with_auth_validation(&state, false, selected_period(month)?)
@@ -1126,6 +1142,7 @@ struct DashboardTemplate {
 struct OverviewTemplate {
 	account: Option<Account>,
 	summary: Option<OverviewSummary>,
+	validate_authentication: bool,
 }
 
 struct OverviewSummary {

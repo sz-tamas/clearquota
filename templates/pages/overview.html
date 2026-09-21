@@ -11,14 +11,14 @@
         <script src="/static/navigation.js"></script>
     </head>
     <body>
-        <div id="app" class="min-h-screen min-[800px]:flex">
+        <div id="app">
+            <div class="{% match account %}{% when Some with (account) %}{% if validate_authentication || account.auth_status != "ready" %}blur-sm pointer-events-none{% endif %}{% when None %}blur-sm pointer-events-none{% endmatch %} min-h-screen min-[800px]:flex">
             <button class="fixed inset-0 z-30 hidden bg-slate-950/35 min-[800px]:hidden"
                     type="button"
                     data-sidebar-backdrop
                     aria-label="Close navigation"></button>
             <aside id="sidebar"
                    data-sidebar
-                   inert
                    class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-slate-200 bg-white px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none"
                    aria-label="Primary navigation"
                    aria-hidden="true">
@@ -149,6 +149,15 @@
     </main>
 </div>
 <div id="provider-dialog"></div>
+</div>
+{% include "partials/onboarding_modal.html" %}
+{% match account %}{% when Some with (account) %}
+{% if validate_authentication %}
+    {% include "partials/auth_validating.html" %}
+{% else if account.auth_status != "ready" %}
+    {% include "partials/auth_required.html" %}
+{% endif %}
+{% when None %}{% endmatch %}
 </div>
 <script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);if(event.target.closest('[data-sidebar-settings]'))document.querySelector('[aria-label="Project settings"]')?.click();});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
 </body>
