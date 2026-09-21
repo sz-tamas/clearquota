@@ -26,7 +26,19 @@ document.addEventListener("htmx:beforeSwap", (event) => {
 });
 
 document.addEventListener("htmx:afterSwap", (event) => {
-  if (!pendingNavigation || event.detail.target.id !== "app") return;
+  if (event.detail.target.id !== "app") return;
+
+  const sidebar = document.querySelector("[data-sidebar]");
+  const backdrop = document.querySelector("[data-sidebar-backdrop]");
+  const toggle = document.querySelector("[data-sidebar-toggle]");
+  const isMobile = window.innerWidth < 800;
+  sidebar?.classList.toggle("-translate-x-full", isMobile);
+  sidebar?.toggleAttribute("inert", isMobile);
+  sidebar?.setAttribute("aria-hidden", String(isMobile));
+  backdrop?.classList.toggle("hidden", true);
+  toggle?.setAttribute("aria-expanded", "false");
+
+  if (!pendingNavigation) return;
 
   if (pendingNavigation.pushHistory) {
     window.history.pushState({}, "", pendingNavigation.path);
