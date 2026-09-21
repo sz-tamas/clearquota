@@ -23,6 +23,7 @@ use crate::{
 pub fn router() -> Router<Arc<AppState>> {
 	Router::new()
 		.route("/", get(index))
+		.route("/providers", get(providers_page).post(create_provider))
 		.route("/runlogs", get(run_logs))
 		.route("/health", get(|| async { "ok" }))
 		.route("/authentication/validate", post(validate_saved_authentication))
@@ -32,7 +33,6 @@ pub fn router() -> Router<Arc<AppState>> {
 		.route("/onboarding/alerts/skip", post(skip_alerts))
 		.route("/account/settings", get(account_settings))
 		.route("/account", post(update_account))
-		.route("/providers", post(create_provider))
 		.route("/providers/list", get(provider_list))
 		.route("/providers/refresh", post(refresh_all_providers))
 		.route("/providers/new", get(new_provider_form))
@@ -157,6 +157,23 @@ async fn run_logs(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Res
 	render_run_logs(&state, !is_htmx_navigation(&headers))
 }
 
+async fn providers_page(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Result<Html<String>, AppError> {
+	render_providers_page(&state, !is_htmx_navigation(&headers))
+}
+
+fn render_providers_page(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
+	let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
+	let providers = state.database.list_providers(&account.id)?;
+	Ok(Html(
+		ProvidersTemplate {
+			validate_authentication: account.auth_status == "ready" && validate_authentication,
+			account,
+			providers,
+		}
+		.render()?,
+	))
+}
+
 fn render_run_logs(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
 	let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
 	let logs = state.database.list_run_logs(&account.id)?;
@@ -182,6 +199,9 @@ async fn validate_saved_authentication(
 	let current_url = headers.get("HX-Current-URL").and_then(|value| value.to_str().ok());
 	if current_url.is_some_and(|url| url.split('?').next().is_some_and(|path| path.ends_with("/runlogs"))) {
 		return render_run_logs(&state, false);
+	}
+	if current_url.is_some_and(|url| url.split('?').next().is_some_and(|path| path.ends_with("/providers"))) {
+		return render_providers_page(&state, false);
 	}
 	let month = current_url.and_then(month_from_url);
 	render_dashboard_with_auth_validation(&state, false, selected_period(month)?)
@@ -263,7 +283,7 @@ async fn create_provider(
 			None,
 			Some("Google Application Default Credentials are unavailable. Authenticate with Google to continue."),
 		)?;
-		return render_dashboard(&state);
+		return render_providers_page(&state, false);
 	}
 	if account.auth_status != "ready"
 		|| !matches!(
@@ -291,7 +311,7 @@ async fn create_provider(
 	}
 	state.database.add_provider(&account.id, input)?;
 	state.database.set_onboarding_step(&account.id, if is_resend { 4 } else { 3 })?;
-	render_dashboard(&state)
+	render_providers_page(&state, false)
 }
 
 async fn edit_provider(Path(id): Path<String>, State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
@@ -339,7 +359,7 @@ async fn update_provider(
 		input.apify_monthly_credit_allowance = Some(provider.apify_monthly_credit_allowance);
 	}
 	state.database.update_provider(&provider.id, &provider.account_id, input)?;
-	render_dashboard(&state)
+	render_providers_page(&state, false)
 }
 
 fn valid_credit_allowance(value: Option<f64>) -> bool {
@@ -398,7 +418,7 @@ async fn delete_confirmation(
 async fn delete_provider(Path(id): Path<String>, State(state): State<Arc<AppState>>) -> Result<Redirect, AppError> {
 	let provider = provider_for_active_account(&state, &id)?;
 	state.database.delete_provider(&provider.id, &provider.account_id)?;
-	Ok(Redirect::to("/"))
+	Ok(Redirect::to("/providers"))
 }
 
 async fn refresh_all_providers(
@@ -980,6 +1000,13 @@ struct DashboardTemplate {
 	next_month_url: Option<String>,
 	refresh_url: String,
 	show_dashboard_skeleton: bool,
+	validate_authentication: bool,
+}
+#[derive(Template)]
+#[template(path = "pages/providers.html")]
+struct ProvidersTemplate {
+	account: Account,
+	providers: Vec<ProviderConfig>,
 	validate_authentication: bool,
 }
 #[derive(Template)]

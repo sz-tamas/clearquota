@@ -6,13 +6,6 @@
             <p class="mb-1 text-xs font-bold tracking-[0.12em] text-brand uppercase">{{ provider.provider_type }}</p>
             <h2 class="text-lg font-bold tracking-tight text-ink">{{ provider.display_name }}</h2>
         </div>
-        <button class="grid size-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-ink"
-                aria-label="Edit {{ provider.display_name }}"
-                hx-get="/providers/{{ provider.id }}/edit"
-                hx-target="#provider-dialog"
-                hx-swap="innerHTML">
-            <i class="size-4" data-lucide="pencil" aria-hidden="true"></i>
-        </button>
     </div>
     {% match openai_period %}{% when Some with (period) %}<div class="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"><i class="size-3.5" data-lucide="clock-3" aria-hidden="true"></i>{{ period }}</div>{% when None %}{% endmatch %}
 {% match snapshot %}{% when Some with (snapshot) %}
