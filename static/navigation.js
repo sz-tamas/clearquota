@@ -25,6 +25,13 @@ function initializeProviderCardGrids() {
   });
 }
 
+function setProviderMenuOpen(open) {
+  const menu = document.querySelector("[data-provider-menu]");
+  const toggle = document.querySelector("[data-provider-menu-toggle]");
+  menu?.classList.toggle("hidden", !open);
+  toggle?.setAttribute("aria-expanded", String(open));
+}
+
 function navigate(path, pushHistory) {
   pendingNavigation = { path, pushHistory };
   window.htmx?.ajax("GET", path, {
@@ -36,7 +43,16 @@ function navigate(path, pushHistory) {
 }
 
 document.addEventListener("click", (event) => {
-  const link = event.target.closest("[data-sidebar-nav][href^='/']");
+  const providerToggle = event.target.closest("[data-provider-menu-toggle]");
+  if (providerToggle) {
+    setProviderMenuOpen(providerToggle.getAttribute("aria-expanded") !== "true");
+  } else if (!event.target.closest("[data-provider-menu]")) {
+    setProviderMenuOpen(false);
+  } else if (event.target.closest("[data-provider-menu] a")) {
+    setProviderMenuOpen(false);
+  }
+
+	const link = event.target.closest("[data-sidebar-nav][href^='/']");
   if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
   event.preventDefault();
@@ -76,6 +92,12 @@ document.addEventListener("htmx:afterSwap", (event) => {
 window.addEventListener("popstate", () => {
   navigate(window.location.pathname + window.location.search + window.location.hash, false);
 });
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setProviderMenuOpen(false);
+});
+
+window.addEventListener("resize", () => setProviderMenuOpen(false));
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeProviderCardGrids();

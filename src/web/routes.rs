@@ -568,7 +568,6 @@ fn render_cards(state: &AppState, account_id: &str, period: UsagePeriod) -> Resu
 		.map(|provider| {
 			let snapshot = state.database.snapshot_for_period(&provider.id, period)?;
 			let openai_activity = openai_activity_summary(state, &provider, period)?;
-			let openai_period = openai_period_label(&provider, period);
 			let mut openai_spend_limit = openai_spend_limit_summary(&provider, snapshot.as_ref());
 			if let (Some(spend_limit), Some(activity)) = (openai_spend_limit.as_mut(), openai_activity.as_ref()) {
 				spend_limit.projects.clone_from(&activity.projects);
@@ -583,7 +582,6 @@ fn render_cards(state: &AppState, account_id: &str, period: UsagePeriod) -> Resu
 					None
 				},
 				openai_activity,
-				openai_period,
 				resend_quota: resend_quota_summary(&provider, snapshot.as_ref()),
 				resend_daily_quota: resend_daily_quota_summary(&provider, snapshot.as_ref()),
 				provider,
@@ -594,25 +592,6 @@ fn render_cards(state: &AppState, account_id: &str, period: UsagePeriod) -> Resu
 		})
 		.collect::<Result<Vec<_>, AppError>>()
 		.map(|cards| cards.join("\n"))
-}
-
-fn openai_period_label(provider: &ProviderConfig, period: UsagePeriod) -> Option<String> {
-	if provider.provider_type != "openai" {
-		return None;
-	}
-	let start = chrono::DateTime::from_timestamp(period.start, 0)?;
-	let last_day = if period.is_current {
-		Utc::now().day()
-	} else {
-		chrono::DateTime::from_timestamp(period.end - 1, 0)?.day()
-	};
-	Some(format!(
-		"{} · {} 1–{}, {} UTC",
-		if period.is_current { "Current month" } else { "Selected month" },
-		start.format("%B"),
-		last_day,
-		start.year()
-	))
 }
 
 fn openai_activity_summary(
@@ -1070,7 +1049,6 @@ struct ProviderCardTemplate {
 	openai_spend_limit: Option<OpenAiSpendLimitSummary>,
 	openai_credit: Option<OpenAiCreditSummary>,
 	openai_activity: Option<OpenAiActivitySummaryView>,
-	openai_period: Option<String>,
 	resend_quota: Option<ResendQuotaSummary>,
 	resend_daily_quota: Option<ResendQuotaSummary>,
 }

@@ -3,14 +3,15 @@
          id="provider-{{ provider.id }}">
     <div class="flex items-start justify-between gap-3">
         <div>
-            <p class="mb-1 text-xs font-bold tracking-[0.12em] text-brand uppercase">{{ provider.provider_type }}</p>
+            <p class="mb-1 flex items-center gap-1.5 text-xs font-semibold text-brand">
+                {% if provider.provider_type == "apify" %}<i class="size-4" data-lucide="boxes" aria-hidden="true"></i>Apify{% else if provider.provider_type == "openai" %}<i class="size-4" data-lucide="bot" aria-hidden="true"></i>OpenAI{% else if provider.provider_type == "resend" %}<i class="size-4" data-lucide="send" aria-hidden="true"></i>Resend{% else %}<i class="size-4" data-lucide="blocks" aria-hidden="true"></i>{{ provider.provider_type }}{% endif %}
+            </p>
             <h2 class="text-lg font-bold tracking-tight text-ink">{{ provider.display_name }}</h2>
         </div>
     </div>
-    {% match openai_period %}{% when Some with (period) %}<div class="mt-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600"><i class="size-3.5" data-lucide="clock-3" aria-hidden="true"></i>{{ period }}</div>{% when None %}{% endmatch %}
-{% match snapshot %}{% when Some with (snapshot) %}
-{% if snapshot.is_partial %}<div class="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"><i class="size-3.5" data-lucide="circle-dashed" aria-hidden="true"></i>Partial month</div>{% endif %}
-{% match apify_credit %}{% when Some with (credit) %}<section class="mt-5 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p class="text-xs font-bold tracking-[.12em] text-amber-700 uppercase">Monthly credit allowance</p><dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt class="text-slate-500">Usage</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.used }} / {{ credit.limit }}</dd></div><div><dt class="text-slate-500">Remaining</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.remaining }}</dd></div><div><dt class="text-slate-500">Used</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.percent_used }}%</dd></div></dl></section>{% when None %}{% endmatch %}
+    {% match snapshot %}{% when Some with (snapshot) %}
+    {% if snapshot.is_partial %}<div class="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"><i class="size-3.5" data-lucide="circle-dashed" aria-hidden="true"></i>Partial month</div>{% endif %}
+    {% match apify_credit %}{% when Some with (credit) %}<section class="mt-5 rounded-xl border border-amber-100 bg-amber-50/50 p-4"><p class="text-xs font-bold tracking-[.12em] text-amber-700 uppercase">Monthly credit allowance</p><dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt class="text-slate-500">Usage</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.used }} / {{ credit.limit }}</dd></div><div><dt class="text-slate-500">Remaining</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.remaining }}</dd></div><div><dt class="text-slate-500">Used</dt><dd class="mt-1 font-bold text-ink" data-motion-number>{{ credit.percent_used }}%</dd></div></dl></section>{% when None %}{% endmatch %}
 {% if provider.provider_type == "openai" %}<div class="mt-5 grid grid-cols-2 gap-3">{% endif %}
 {% match openai_spend_limit %}{% when Some with (spend_limit) %}<section class="rounded-xl border border-slate-200 bg-slate-50/70 p-3"><p class="text-[.7rem] font-bold tracking-[.1em] text-slate-600 uppercase">Selected-month API spend</p><p class="mt-2 text-lg font-bold tracking-tight text-ink"
    data-motion-number>{{ spend_limit.used }} / {% match spend_limit.limit %}{% when Some with (limit) %}{{ limit }}{% when None %}—{% endmatch %}</p><div class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200"><div class="h-full rounded-full bg-emerald-500"
