@@ -53,6 +53,11 @@ struct MonthQuery {
 	month: Option<String>,
 }
 
+#[derive(Default, Deserialize)]
+struct NewProviderQuery {
+	provider: Option<String>,
+}
+
 fn current_period() -> UsagePeriod {
 	let today = Utc::now().date_naive();
 	period_for_month(today.year(), today.month(), true).expect("the current UTC month is valid")
@@ -266,9 +271,27 @@ async fn check_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
 	render_dashboard(&state)
 }
 
-async fn new_provider_form(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn new_provider_form(
+	State(state): State<Arc<AppState>>,
+	Query(query): Query<NewProviderQuery>,
+) -> Result<Html<String>, AppError> {
 	state.database.active_account()?.ok_or(AppError::BadRequest)?;
-	Ok(Html(NewProviderDialogTemplate.render()?))
+	let provider_type = query.provider.unwrap_or_else(|| "resend".to_owned());
+	if !matches!(provider_type.as_str(), "apify" | "openai" | "resend") {
+		return Err(AppError::BadRequest);
+	}
+	let display_name = match provider_type.as_str() {
+		"apify" => "Apify",
+		"openai" => "OpenAI",
+		_ => "Resend",
+	};
+	Ok(Html(
+		NewProviderDialogTemplate {
+			provider_type,
+			display_name,
+		}
+		.render()?,
+	))
 }
 
 async fn create_provider(
@@ -1034,7 +1057,10 @@ struct AuthRequiredTemplate {
 }
 #[derive(Template)]
 #[template(path = "partials/new_provider_dialog.html")]
-struct NewProviderDialogTemplate;
+struct NewProviderDialogTemplate {
+	provider_type: String,
+	display_name: &'static str,
+}
 #[derive(Template)]
 #[template(path = "partials/provider_card.html")]
 struct ProviderCardTemplate {

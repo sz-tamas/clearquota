@@ -9,9 +9,9 @@
         id="provider_type"
         name="provider_type"
         onchange="document.getElementById('display_name').value = this.options[this.selectedIndex].text">
-            <option value="resend" selected>Resend</option>
-            <option value="apify">Apify</option>
-            <option value="openai">OpenAI</option>
+            <option value="resend" {% if provider_type == "resend" %}selected{% endif %}>Resend</option>
+            <option value="apify" {% if provider_type == "apify" %}selected{% endif %}>Apify</option>
+            <option value="openai" {% if provider_type == "openai" %}selected{% endif %}>OpenAI</option>
             <option value="neon" disabled>Neon (coming soon)</option>
             <option value="upstash" disabled>Upstash (coming soon)</option>
         </select>
@@ -22,7 +22,7 @@
        id="display_name"
        name="display_name"
        required
-       value="Resend">
+       value="{{ display_name }}">
     </div>
     <div>
         <label class="mb-1.5 block text-xs font-semibold text-slate-600"

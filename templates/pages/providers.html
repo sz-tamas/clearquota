@@ -90,12 +90,104 @@
                             <h1 class="text-4xl font-bold tracking-tight">Providers</h1>
                             <p class="mt-2 text-sm text-slate-500">Add and manage the services shown on your dashboard.</p>
                         </div>
-                        <button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-                                hx-get="/providers/new"
-                                hx-target="#provider-dialog"
-                                hx-swap="innerHTML">
-                            <i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider
-                        </button>
+                        <div class="relative">
+                            <button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark focus:outline-none focus:ring-4 focus:ring-violet-200"
+                                    id="add-provider-menu-button"
+                                    type="button"
+                                    aria-expanded="false"
+                                    aria-controls="add-provider-menu"
+                                    data-provider-menu-toggle>
+                                <i class="size-4"
+                                   data-lucide="plus"
+                                   aria-hidden="true"></i>Add provider<i class="size-4"
+   data-lucide="chevron-down"
+   aria-hidden="true"></i>
+                            </button>
+                            <div class="absolute right-0 z-10 mt-2 hidden w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                                 id="add-provider-menu"
+                                 data-provider-menu>
+                                <p class="border-b border-slate-100 px-3 py-2 text-xs font-semibold tracking-[.08em] text-slate-400 uppercase">Choose a provider</p>
+                                <ul class="grid grid-cols-2 gap-1 p-2 text-sm"
+                                    aria-labelledby="add-provider-menu-button">
+                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+   href="/providers/new?provider=apify"
+   hx-get="/providers/new?provider=apify"
+   hx-target="#provider-dialog"
+   hx-swap="innerHTML"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>Apify</a></li>
+                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+   href="/providers/new?provider=openai"
+   hx-get="/providers/new?provider=openai"
+   hx-target="#provider-dialog"
+   hx-swap="innerHTML"><i class="size-4" data-lucide="bot" aria-hidden="true"></i>OpenAI</a></li>
+                                    <li><a class="flex items-center gap-2 rounded-lg px-3 py-2 font-medium text-slate-700 hover:bg-violet-50 hover:text-brand"
+   href="/providers/new?provider=resend"
+   hx-get="/providers/new?provider=resend"
+   hx-target="#provider-dialog"
+   hx-swap="innerHTML"><i class="size-4" data-lucide="send" aria-hidden="true"></i>Resend</a></li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="cloud" aria-hidden="true"></i>AWS</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="cloud-sun" aria-hidden="true"></i>Cloudflare</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="database" aria-hidden="true"></i>Upstash</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="database-zap" aria-hidden="true"></i>NeonDB</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="bolt" aria-hidden="true"></i>Supabase</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="mail" aria-hidden="true"></i>Postmark</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="brain" aria-hidden="true"></i>Claude</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="sparkles" aria-hidden="true"></i>Gemini</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="github" aria-hidden="true"></i>GitHub</button>
+                                    </li>
+                                    <li>
+                                        <button class="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-400"
+                                                type="button"
+                                                disabled
+                                                title="Coming soon"><i class="size-4" data-lucide="git-fork" aria-hidden="true"></i>GitLab</button>
+                                    </li>
+                                </ul>
+                                <p class="border-t border-slate-100 px-3 py-2 text-xs text-slate-400">Dimmed providers are coming soon.</p>
+                            </div>
+                        </div>
                     </div>
                     <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                         <div class="overflow-x-auto">
@@ -140,6 +232,6 @@
             {% endif %}
             <div id="provider-dialog"></div>
         </div>
-        <script>const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);if(event.target.closest('[data-sidebar-settings]'))document.querySelector('[aria-label="Project settings"]')?.click();});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
+        <script>const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};const setProviderMenuOpen=(open)=>{const menu=document.querySelector('[data-provider-menu]');const toggle=document.querySelector('[data-provider-menu-toggle]');menu?.classList.toggle('hidden',!open);toggle?.setAttribute('aria-expanded',String(open));};setSidebarOpen(false);document.addEventListener('click',(event)=>{const providerToggle=event.target.closest('[data-provider-menu-toggle]');if(providerToggle){setProviderMenuOpen(providerToggle.getAttribute('aria-expanded')!=='true')}else if(!event.target.closest('[data-provider-menu]'))setProviderMenuOpen(false);if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);if(event.target.closest('[data-sidebar-settings]'))document.querySelector('[aria-label="Project settings"]')?.click();});document.addEventListener('keydown',(event)=>{if(event.key==='Escape'){setSidebarOpen(false);setProviderMenuOpen(false)}});window.addEventListener('resize',()=>{setSidebarOpen(false);setProviderMenuOpen(false)});document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
     </body>
 </html>
