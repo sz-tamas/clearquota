@@ -177,7 +177,7 @@ fn overview_summary(state: &AppState, account_id: &str, period: UsagePeriod) -> 
 				tracked_spend += snapshot.cost.unwrap_or_default().max(0.0);
 				newest_refresh = newest_refresh.max(snapshot.timestamp.parse::<i64>().ok());
 			}
-			let usage = overview_provider_usage(&provider, snapshot.as_ref());
+			let usage = overview_provider_usage(state, &provider, snapshot.as_ref())?;
 			if usage.is_nearing_limit {
 				nearing_limit += 1;
 			}
@@ -199,22 +199,41 @@ fn overview_summary(state: &AppState, account_id: &str, period: UsagePeriod) -> 
 	})
 }
 
-fn overview_provider_usage(provider: &ProviderConfig, snapshot: Option<&UsageSnapshot>) -> OverviewProviderUsage {
+fn overview_provider_usage(
+	state: &AppState,
+	provider: &ProviderConfig,
+	snapshot: Option<&UsageSnapshot>,
+) -> Result<OverviewProviderUsage, AppError> {
 	let (label, used, limit, percent) = match (provider.provider_type.as_str(), snapshot) {
-		("openai", Some(snapshot)) => snapshot
-			.metrics
-			.iter()
-			.find(|metric| metric.id == "organization_spend_limit")
-			.map(|metric| {
-				let limit = metric.limit.unwrap_or_default();
+		("openai", _) => state
+			.database
+			.openai_credit_totals(&provider.id)?
+			.map(|(credit, spent)| {
 				(
-					"Organization costs",
-					format_usd(metric.used),
-					format_usd(limit),
-					percent_of(metric.used, limit),
+					"Net credit used",
+					format_usd(spent),
+					format_usd(credit),
+					percent_of(spent, credit),
 				)
 			})
-			.unwrap_or(("Organization costs", "—".to_owned(), "No limit".to_owned(), 0.0)),
+			.or_else(|| {
+				snapshot.and_then(|snapshot| {
+					snapshot
+						.metrics
+						.iter()
+						.find(|metric| metric.id == "organization_spend_limit")
+						.map(|metric| {
+							let limit = metric.limit.unwrap_or_default();
+							(
+								"Organization costs",
+								format_usd(metric.used),
+								format_usd(limit),
+								percent_of(metric.used, limit),
+							)
+						})
+				})
+			})
+			.unwrap_or(("Net credit used", "—".to_owned(), "No credit balance".to_owned(), 0.0)),
 		("apify", Some(snapshot)) => snapshot
 			.metrics
 			.iter()
@@ -252,7 +271,7 @@ fn overview_provider_usage(provider: &ProviderConfig, snapshot: Option<&UsageSna
 		(_, _) => ("Current-month usage", "—".to_owned(), "Not refreshed".to_owned(), 0.0),
 	};
 	let percent = percent.clamp(0.0, 100.0);
-	OverviewProviderUsage {
+	Ok(OverviewProviderUsage {
 		name: provider.display_name.clone(),
 		provider_type: provider.provider_type.clone(),
 		label: label.to_owned(),
@@ -260,7 +279,7 @@ fn overview_provider_usage(provider: &ProviderConfig, snapshot: Option<&UsageSna
 		limit,
 		percent: format!("{percent:.0}"),
 		is_nearing_limit: percent >= 80.0,
-	}
+	})
 }
 
 fn percent_of(used: f64, limit: f64) -> f64 {

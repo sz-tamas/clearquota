@@ -19,19 +19,14 @@ impl Provider for ApifyProvider {
 		let client = reqwest::Client::new();
 		let now = chrono::Utc::now().timestamp();
 		let last_included = if period.is_current { now.min(period.end - 1) } else { period.end - 1 };
-		let query_dates = [period.start, last_included];
-		let mut daily_totals = std::collections::BTreeMap::new();
+		let date = chrono::DateTime::from_timestamp(last_included, 0)
+			.ok_or(ProviderError::InvalidResponse)?
+			.date_naive()
+			.to_string();
 		let mut native_cycles = Vec::new();
-		for timestamp in query_dates {
-			let date = chrono::DateTime::from_timestamp(timestamp, 0)
-				.ok_or(ProviderError::InvalidResponse)?
-				.date_naive()
-				.to_string();
-			let payload = fetch_monthly_usage(&client, secret, &date).await?;
-			let data = payload.get("data").unwrap_or(&payload);
-			absorb_cycle(data, period, now, &mut daily_totals, &mut native_cycles)?;
-		}
-		let used = daily_totals.values().sum::<f64>();
+		let payload = fetch_monthly_usage(&client, secret, &date).await?;
+		let data = payload.get("data").unwrap_or(&payload);
+		let used = absorb_cycle(data, &mut native_cycles)?;
 		let limit = config.apify_monthly_credit_allowance;
 		if !limit.is_finite() || limit <= 0.0 {
 			return Err(ProviderError::InvalidResponse);
@@ -47,7 +42,7 @@ impl Provider for ApifyProvider {
 			is_partial: period.is_current,
 			metadata: json!({
 				"apify_native_billing_cycles": native_cycles,
-				"calendar_month_daily_entries": daily_totals.len()
+				"usage_source": "totalUsageCreditsUsdAfterVolumeDiscount"
 			}),
 			openai_cost_ledger: None,
 			openai_usage_ledger: None,
@@ -55,13 +50,7 @@ impl Provider for ApifyProvider {
 	}
 }
 
-fn absorb_cycle(
-	data: &Value,
-	period: UsagePeriod,
-	now: i64,
-	daily_totals: &mut std::collections::BTreeMap<i64, f64>,
-	native_cycles: &mut Vec<Value>,
-) -> Result<(), ProviderError> {
+fn absorb_cycle(data: &Value, native_cycles: &mut Vec<Value>) -> Result<f64, ProviderError> {
 	let cycle = data.get("usageCycle").ok_or(ProviderError::InvalidResponse)?;
 	let cycle_start = cycle
 		.get("startAt")
@@ -85,30 +74,10 @@ fn absorb_cycle(
 			"total_usage_credits_usd_after_volume_discount": native_total
 		}));
 	}
-	let days = data
-		.get("dailyServiceUsages")
-		.and_then(Value::as_array)
-		.ok_or(ProviderError::InvalidResponse)?;
-	for day in days {
-		let day_start = day
-			.get("date")
-			.and_then(Value::as_str)
-			.and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
-			.map(|value| value.timestamp())
-			.ok_or(ProviderError::InvalidResponse)?;
-		if day_start < period.start || day_start >= period.end || day_start > now {
-			continue;
-		}
-		let amount = day
-			.get("serviceUsage")
-			.and_then(Value::as_object)
-			.ok_or(ProviderError::InvalidResponse)?
-			.values()
-			.filter_map(|usage| usage.get("amountAfterVolumeDiscountUsd").and_then(Value::as_f64))
-			.sum::<f64>();
-		daily_totals.insert(day_start, amount);
+	if !native_total.is_finite() || native_total < 0.0 {
+		return Err(ProviderError::InvalidResponse);
 	}
-	Ok(())
+	Ok(native_total)
 }
 
 async fn fetch_monthly_usage(
@@ -177,12 +146,6 @@ mod tests {
 
 	#[test]
 	fn derives_calendar_usage_and_preserves_native_cycle_metadata() {
-		let august_start = chrono::DateTime::parse_from_rfc3339("2026-08-01T00:00:00Z")
-			.unwrap()
-			.timestamp();
-		let september_start = chrono::DateTime::parse_from_rfc3339("2026-09-01T00:00:00Z")
-			.unwrap()
-			.timestamp();
 		let data = json!({
 			"usageCycle": {"startAt": "2026-07-15T00:00:00Z", "endAt": "2026-08-14T23:59:59Z"},
 			"totalUsageCreditsUsdAfterVolumeDiscount": 9.5,
@@ -194,21 +157,9 @@ mod tests {
 				}}
 			]
 		});
-		let mut daily = std::collections::BTreeMap::new();
 		let mut cycles = Vec::new();
-		absorb_cycle(
-			&data,
-			UsagePeriod {
-				start: august_start,
-				end: september_start,
-				is_current: false,
-			},
-			september_start,
-			&mut daily,
-			&mut cycles,
-		)
-		.unwrap();
-		assert_eq!(daily.values().sum::<f64>(), 2.0);
+		let used = absorb_cycle(&data, &mut cycles).unwrap();
+		assert_eq!(used, 9.5);
 		assert_eq!(cycles.len(), 1);
 		assert_eq!(cycles[0]["total_usage_credits_usd_after_volume_discount"], 9.5);
 	}
