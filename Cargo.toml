@@ -5,7 +5,7 @@ edition = "2024"
 license = "AGPL-3.0-only"
 
 [dependencies]
-askama = "0.14"
+askama = "0.16"
 async-trait = "0.1"
 axum = "0.8"
 base64 = "0.22"
