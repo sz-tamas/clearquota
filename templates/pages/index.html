@@ -62,7 +62,7 @@
         hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
         hx-get="/providers/new"
         hx-target="#provider-dialog"
-        hx-swap="innerHTML"><i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their current usage here.</p>{% include "partials/provider_list.html" %}</main></div>
+        hx-swap="innerHTML"><i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their current usage here.</p>{% if show_dashboard_skeleton %}{% include "partials/provider_list_skeleton.html" %}{% else %}{% include "partials/provider_list.html" %}{% endif %}</main></div>
 </div>
 {% include "partials/onboarding_modal.html" %}
 {% match account %}{% when Some with (account) %}

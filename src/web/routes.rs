@@ -363,17 +363,21 @@ fn render_dashboard_with_auth_validation(
 	validate_authentication: bool,
 ) -> Result<Html<String>, AppError> {
 	let account = state.database.active_account()?;
+	let show_dashboard_skeleton = account
+		.as_ref()
+		.is_some_and(|account| validate_authentication || account.auth_status != "ready");
 	// Loading the project display name here ensures the authenticated project
 	// metadata remains part of the dashboard state, ready for the header UI.
 	let _project_name = account.as_ref().and_then(|item| item.project_name.as_deref());
-	let cards_html = match &account {
-		Some(account) => render_cards(state, &account.id)?,
-		None => String::new(),
+	let cards_html = match (&account, show_dashboard_skeleton) {
+		(Some(account), false) => render_cards(state, &account.id)?,
+		_ => String::new(),
 	};
 	Ok(Html(
 		DashboardTemplate {
 			account,
 			cards_html,
+			show_dashboard_skeleton,
 			validate_authentication,
 		}
 		.render()?,
@@ -829,6 +833,7 @@ mod tests {
 struct DashboardTemplate {
 	account: Option<Account>,
 	cards_html: String,
+	show_dashboard_skeleton: bool,
 	validate_authentication: bool,
 }
 #[derive(Template)]
