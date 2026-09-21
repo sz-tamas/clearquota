@@ -76,12 +76,18 @@ async fn run_logs(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Html<String>, AppError> {
+    render_run_logs(&state, !is_htmx_navigation(&headers))
+}
+
+fn render_run_logs(
+    state: &AppState,
+    validate_authentication: bool,
+) -> Result<Html<String>, AppError> {
     let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
     let logs = state.database.list_run_logs(&account.id)?;
     Ok(Html(
         RunLogsTemplate {
-            validate_authentication: account.auth_status == "ready"
-                && !is_htmx_navigation(&headers),
+            validate_authentication: account.auth_status == "ready" && validate_authentication,
             account,
             logs: logs.into_iter().map(run_log_view).collect(),
         }
@@ -97,8 +103,16 @@ fn is_htmx_navigation(headers: &HeaderMap) -> bool {
 
 async fn validate_saved_authentication(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
 ) -> Result<Html<String>, AppError> {
     refresh_saved_authentication(&state).await?;
+    if headers
+        .get("HX-Current-URL")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|url| url.ends_with("/runlogs"))
+    {
+        return render_run_logs(&state, false);
+    }
     render_dashboard(&state)
 }
 
