@@ -44,6 +44,7 @@ impl Provider for ApifyProvider {
 			currency: Some("USD".to_owned()),
 			metrics: monthly_credit_metrics(used, limit),
 			period,
+			is_partial: period.is_current,
 			metadata: json!({
 				"apify_native_billing_cycles": native_cycles,
 				"calendar_month_daily_entries": daily_totals.len()

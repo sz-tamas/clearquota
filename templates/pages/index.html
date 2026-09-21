@@ -54,21 +54,31 @@
         hx-get="/account/settings"
         hx-target="#provider-dialog"
         hx-swap="innerHTML"><i class="size-5" data-lucide="settings" aria-hidden="true"></i></button><span class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600">{{ account.project_id }}</span>{% when None %}{% endmatch %}</div></div></header>
-        <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><button class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
-        data-refresh-all
-        hx-post="/providers/refresh"
-        hx-sync="this:drop"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+        <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><button class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
         hx-get="/providers/new"
         hx-target="#provider-dialog"
-        hx-swap="innerHTML"><i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their usage by UTC calendar month.</p><nav class="mt-6 inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+        hx-swap="innerHTML"><i class="size-4" data-lucide="plus" aria-hidden="true"></i>Add provider</button></div></div><p class="mt-2 text-sm text-slate-500">Connect providers securely, then track their usage by UTC calendar month.</p><div class="mt-6 flex flex-wrap items-center justify-between gap-3"><nav class="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
      aria-label="Usage month"><a class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
    href="{{ previous_month_url }}"
+   hx-get="{{ previous_month_url }}"
+   hx-target="#app"
+   hx-select="#app"
+   hx-swap="outerHTML"
+   hx-push-url="true"
    aria-label="Previous month"><i class="size-4" data-lucide="chevron-left" aria-hidden="true"></i></a><span class="min-w-36 px-3 text-center text-sm font-semibold text-ink">{{ selected_month }}</span>{% match next_month_url %}{% when Some with (url) %}<a class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
    href="{{ url }}"
+   hx-get="{{ url }}"
+   hx-target="#app"
+   hx-select="#app"
+   hx-swap="outerHTML"
+   hx-push-url="true"
    aria-label="Next month"><i class="size-4" data-lucide="chevron-right" aria-hidden="true"></i></a>{% when None %}<span class="grid size-9 place-items-center rounded-lg text-slate-300"
-      aria-hidden="true"><i class="size-4" data-lucide="chevron-right"></i></span>{% endmatch %}</nav>{% if show_dashboard_skeleton %}{% include "partials/provider_list_skeleton.html" %}{% else %}{% include "partials/provider_list.html" %}{% endif %}</main></div>
+      aria-hidden="true"><i class="size-4" data-lucide="chevron-right"></i></span>{% endmatch %}</nav><button class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
+        data-refresh-all
+        hx-post="{{ refresh_url }}"
+        hx-sync="this:drop"
+        hx-target="#provider-dialog"
+        hx-swap="innerHTML"><i class="size-4" data-lucide="refresh-cw" aria-hidden="true"></i>Refresh all</button></div>{% if show_dashboard_skeleton %}{% include "partials/provider_list_skeleton.html" %}{% else %}{% include "partials/provider_list.html" %}{% endif %}</main></div>
 </div>
 {% include "partials/onboarding_modal.html" %}
 {% match account %}{% when Some with (account) %}

@@ -73,6 +73,11 @@ impl Database {
 			Err(error) if error.to_string().contains("duplicate column name") => (),
 			Err(error) => return Err(error),
 		};
+		match connection.execute_batch(include_str!("../migrations/016_monthly_usage_partial.sql")) {
+			Ok(()) => (),
+			Err(error) if error.to_string().contains("duplicate column name") => (),
+			Err(error) => return Err(error),
+		};
 		Self::compact_provider_secret_names(&connection)
 	}
 
@@ -203,7 +208,7 @@ impl Database {
 		provider_id: &str,
 		period: crate::models::UsagePeriod,
 	) -> Result<Option<UsageSnapshot>, rusqlite::Error> {
-		self.connection()?.query_row("SELECT refreshed_at, status, cost, currency, metrics_json, period_end, metadata_json FROM monthly_usage_snapshots WHERE provider_id = ?1 AND period_start = ?2", params![provider_id, period.start], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(), period: crate::models::UsagePeriod { start: period.start, end: row.get(5)?, is_current: period.is_current }, metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(), openai_cost_ledger: None, openai_usage_ledger: None })).optional()
+		self.connection()?.query_row("SELECT refreshed_at, status, cost, currency, metrics_json, period_end, metadata_json, is_partial FROM monthly_usage_snapshots WHERE provider_id = ?1 AND period_start = ?2", params![provider_id, period.start], |row| Ok(UsageSnapshot { provider_id: provider_id.to_owned(), timestamp: row.get(0)?, status: row.get(1)?, cost: row.get(2)?, currency: row.get(3)?, metrics: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or_default(), period: crate::models::UsagePeriod { start: period.start, end: row.get(5)?, is_current: period.is_current }, metadata: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or_default(), is_partial: row.get(7)?, openai_cost_ledger: None, openai_usage_ledger: None })).optional()
 	}
 
 	pub fn save_snapshot(&self, snapshot: &UsageSnapshot) -> Result<(), rusqlite::Error> {
@@ -213,8 +218,8 @@ impl Database {
 		let transaction = connection.transaction()?;
 		transaction.execute("INSERT INTO usage_snapshots (provider_id, timestamp, status, cost, currency, raw_metrics_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", params![snapshot.provider_id, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics])?;
 		transaction.execute(
-			"INSERT INTO monthly_usage_snapshots (provider_id, period_start, period_end, refreshed_at, status, cost, currency, metrics_json, metadata_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ON CONFLICT(provider_id, period_start) DO UPDATE SET period_end = excluded.period_end, refreshed_at = excluded.refreshed_at, status = excluded.status, cost = excluded.cost, currency = excluded.currency, metrics_json = excluded.metrics_json, metadata_json = excluded.metadata_json",
-			params![snapshot.provider_id, snapshot.period.start, snapshot.period.end, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics, metadata],
+			"INSERT INTO monthly_usage_snapshots (provider_id, period_start, period_end, refreshed_at, status, cost, currency, metrics_json, metadata_json, is_partial) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) ON CONFLICT(provider_id, period_start) DO UPDATE SET period_end = excluded.period_end, refreshed_at = excluded.refreshed_at, status = excluded.status, cost = excluded.cost, currency = excluded.currency, metrics_json = excluded.metrics_json, metadata_json = excluded.metadata_json, is_partial = excluded.is_partial",
+			params![snapshot.provider_id, snapshot.period.start, snapshot.period.end, snapshot.timestamp, snapshot.status, snapshot.cost, snapshot.currency, metrics, metadata, snapshot.is_partial],
 		)?;
 		if let Some(ledger) = &snapshot.openai_cost_ledger {
 			self.replace_openai_cost_ledger(&transaction, &snapshot.provider_id, ledger)?;
@@ -529,6 +534,7 @@ mod tests {
 					end: 201,
 					is_current: false,
 				},
+				is_partial: false,
 				metadata: serde_json::json!({}),
 				openai_cost_ledger: Some(OpenAiCostLedger {
 					start_time: 100,
@@ -672,6 +678,7 @@ mod tests {
 						end,
 						is_current: false,
 					},
+					is_partial: cost == 1.5,
 					metadata: serde_json::json!({}),
 					openai_cost_ledger: None,
 					openai_usage_ledger: None,
@@ -682,7 +689,7 @@ mod tests {
 		save(200, 300, 2.0);
 		save(100, 200, 1.5);
 
-		for (start, end, expected) in [(100, 200, 1.5), (200, 300, 2.0)] {
+		for (start, end, expected, is_partial) in [(100, 200, 1.5, true), (200, 300, 2.0, false)] {
 			let snapshot = database
 				.snapshot_for_period(
 					&provider_id,
@@ -695,6 +702,7 @@ mod tests {
 				.unwrap()
 				.unwrap();
 			assert_eq!(snapshot.cost, Some(expected));
+			assert_eq!(snapshot.is_partial, is_partial);
 		}
 
 		database
@@ -715,6 +723,7 @@ mod tests {
 			.unwrap()
 			.unwrap();
 		assert_eq!(backfilled.cost, Some(2.0));
+		assert!(backfilled.is_partial);
 
 		std::fs::remove_file(path).ok();
 	}

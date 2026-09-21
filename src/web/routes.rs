@@ -117,10 +117,14 @@ fn period_label(period: UsagePeriod) -> String {
 }
 
 fn month_url(period: UsagePeriod) -> String {
-	let month = chrono::DateTime::from_timestamp(period.start, 0)
+	format!("/?month={}", month_value(period))
+}
+
+fn month_value(period: UsagePeriod) -> String {
+	chrono::DateTime::from_timestamp(period.start, 0)
 		.expect("stored period timestamp is valid")
-		.format("%Y-%m");
-	format!("/?month={month}")
+		.format("%Y-%m")
+		.to_string()
 }
 
 fn month_from_url(url: &str) -> Option<&str> {
@@ -397,7 +401,11 @@ async fn delete_provider(Path(id): Path<String>, State(state): State<Arc<AppStat
 	Ok(Redirect::to("/"))
 }
 
-async fn refresh_all_providers(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn refresh_all_providers(
+	State(state): State<Arc<AppState>>,
+	Query(query): Query<MonthQuery>,
+) -> Result<Html<String>, AppError> {
+	let period = selected_period(query.month.as_deref())?;
 	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
 	let mut succeeded = 0;
 	let mut failed = 0;
@@ -413,18 +421,28 @@ async fn refresh_all_providers(State(state): State<Arc<AppState>>) -> Result<Htm
 				continue;
 			}
 		}
-		if let Err(error) = refresh_provider_usage(&state, &provider).await {
+		if let Err(error) = refresh_provider_usage(&state, &provider, period).await {
 			state.database.set_provider_refresh_error(&provider.id, Some(&error))?;
 			state.database.save_run_log(&provider.id, "failed", &error)?;
 			failed += 1;
 		} else {
-			state
-				.database
-				.save_run_log(&provider.id, "succeeded", "Usage refresh completed successfully.")?;
+			state.database.save_run_log(
+				&provider.id,
+				"succeeded",
+				&format!("{} usage refresh completed successfully.", period_label(period)),
+			)?;
 			succeeded += 1;
 		}
 	}
-	Ok(Html(RefreshCompleteTemplate { succeeded, failed }.render()?))
+	Ok(Html(
+		RefreshCompleteTemplate {
+			succeeded,
+			failed,
+			period_label: period_label(period),
+			provider_list_url: format!("/providers/list?month={}", month_value(period)),
+		}
+		.render()?,
+	))
 }
 
 async fn provider_list(
@@ -472,6 +490,7 @@ fn render_dashboard_with_auth_validation(
 			selected_month: period_label(period),
 			previous_month_url: month_url(previous_period(period)),
 			next_month_url: (!period.is_current).then(|| month_url(next_period(period))),
+			refresh_url: format!("/providers/refresh?month={}", month_value(period)),
 			show_dashboard_skeleton,
 			validate_authentication,
 		}
@@ -812,7 +831,11 @@ fn provider_for_active_account(state: &AppState, id: &str) -> Result<ProviderCon
 	Ok(provider)
 }
 
-async fn refresh_provider_usage(state: &AppState, provider: &ProviderConfig) -> Result<(), String> {
+async fn refresh_provider_usage(
+	state: &AppState,
+	provider: &ProviderConfig,
+	period: UsagePeriod,
+) -> Result<(), String> {
 	let secret = state
         .secret_resolver
         .resolve(&provider.secret_ref)
@@ -825,26 +848,17 @@ async fn refresh_provider_usage(state: &AppState, provider: &ProviderConfig) -> 
             crate::secrets::SecretError::AccessFailed => "Google Cloud could not access this Secret Manager secret. Check that the ADC identity has Secret Manager Secret Accessor on this secret and that the Secret Manager API is enabled.".to_owned(),
             crate::secrets::SecretError::InvalidPayload => "Google Cloud returned a Secret Manager value that could not be read safely.".to_owned(),
         })?;
-	let current = current_period();
-	let periods = [current, previous_period(current)];
-	let mut errors = Vec::new();
-	for period in periods {
-		match state.providers.collect(provider, &secret, period).await {
-			Ok(snapshot) => {
-				if state.database.save_snapshot(&snapshot).is_err() {
-					errors.push(format!("{} could not be saved to SQLite", period_label(period)));
-				}
-			}
-			Err(error) => errors.push(format!("{}: {error}", period_label(period))),
-		}
-	}
-	if !errors.is_empty() {
-		return Err(format!(
-			"{} refresh was partial: {}",
+	let snapshot = state.providers.collect(provider, &secret, period).await.map_err(|error| {
+		format!(
+			"{} {} refresh failed: {error}",
 			provider.display_name,
-			errors.join("; ")
-		));
-	}
+			period_label(period)
+		)
+	})?;
+	state
+		.database
+		.save_snapshot(&snapshot)
+		.map_err(|_| format!("{} usage could not be saved to SQLite", period_label(period)))?;
 	state
 		.database
 		.set_provider_refresh_error(&provider.id, None)
@@ -964,6 +978,7 @@ struct DashboardTemplate {
 	selected_month: String,
 	previous_month_url: String,
 	next_month_url: Option<String>,
+	refresh_url: String,
 	show_dashboard_skeleton: bool,
 	validate_authentication: bool,
 }
@@ -1082,6 +1097,8 @@ struct AccountSettingsTemplate {
 struct RefreshCompleteTemplate {
 	succeeded: usize,
 	failed: usize,
+	period_label: String,
+	provider_list_url: String,
 }
 
 #[derive(Debug, thiserror::Error)]

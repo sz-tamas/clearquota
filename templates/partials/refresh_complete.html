@@ -4,9 +4,9 @@
          aria-modal="true"
          aria-live="polite"
          aria-labelledby="refresh-dialog-title"
-         onclick="event.stopPropagation()"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Refresh complete</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">Provider refresh finished</h2><p class="mt-3 text-sm leading-6 text-slate-600">{{ succeeded }} provider{% if succeeded != 1 %}s{% endif %} refreshed successfully{% if failed > 0 %}; {{ failed }} failed and show an error on their card{% endif %}.</p><div class="mt-7 flex justify-end gap-3"><button class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+         onclick="event.stopPropagation()"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Refresh complete</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">{{ period_label }} refresh finished</h2><p class="mt-3 text-sm leading-6 text-slate-600">{{ succeeded }} provider{% if succeeded != 1 %}s{% endif %} refreshed successfully{% if failed > 0 %}; {{ failed }} failed and show an error on their card{% endif %}.</p><div class="mt-7 flex justify-end gap-3"><button class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
         onclick="document.getElementById('provider-dialog').innerHTML=''">Close</button><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-        hx-get="/providers/list"
+        hx-get="{{ provider_list_url }}"
         hx-target="#provider-list"
         hx-swap="outerHTML"
         hx-on::after-request="document.getElementById('provider-dialog').innerHTML=''">Show refreshed data</button></div></section></div>

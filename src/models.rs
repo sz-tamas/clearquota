@@ -41,6 +41,7 @@ pub struct UsageSnapshot {
 	pub currency: Option<String>,
 	pub metrics: Vec<Metric>,
 	pub period: UsagePeriod,
+	pub is_partial: bool,
 	/// Sanitized provider-specific period context, never a raw API response.
 	pub metadata: serde_json::Value,
 	/// Sanitized OpenAI cost records to persist apart from the aggregate snapshot.

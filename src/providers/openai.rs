@@ -70,6 +70,7 @@ impl Provider for OpenAiProvider {
 			currency: Some(costs.currency.clone()),
 			metrics: openai_metrics(monthly_amount, limit, &costs.currency, usage.as_deref()),
 			period,
+			is_partial: period.is_current || status == "partial",
 			metadata: serde_json::json!({}),
 			openai_cost_ledger: Some(OpenAiCostLedger {
 				start_time: period.start,

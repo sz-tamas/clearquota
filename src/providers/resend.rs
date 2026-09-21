@@ -129,6 +129,7 @@ impl Provider for ResendProvider {
 			currency: None,
 			metrics,
 			period,
+			is_partial: period.is_current,
 			metadata: serde_json::json!({}),
 			openai_cost_ledger: None,
 			openai_usage_ledger: None,
