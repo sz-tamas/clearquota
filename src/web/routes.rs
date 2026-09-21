@@ -22,7 +22,8 @@ use crate::{
 
 pub fn router() -> Router<Arc<AppState>> {
 	Router::new()
-		.route("/", get(index))
+		.route("/", get(overview))
+		.route("/dashboard", get(dashboard))
 		.route("/providers", get(providers_page).post(create_provider))
 		.route("/runlogs", get(run_logs))
 		.route("/health", get(|| async { "ok" }))
@@ -122,7 +123,7 @@ fn period_label(period: UsagePeriod) -> String {
 }
 
 fn month_url(period: UsagePeriod) -> String {
-	format!("/?month={}", month_value(period))
+	format!("/dashboard?month={}", month_value(period))
 }
 
 fn month_value(period: UsagePeriod) -> String {
@@ -141,7 +142,119 @@ async fn not_found() -> Result<(axum::http::StatusCode, Html<String>), AppError>
 	Ok((axum::http::StatusCode::NOT_FOUND, Html(NotFoundTemplate.render()?)))
 }
 
-async fn index(
+async fn overview(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+	let account = state.database.active_account()?;
+	let summary = account
+		.as_ref()
+		.map(|account| overview_summary(&state, &account.id, current_period()))
+		.transpose()?;
+	Ok(Html(OverviewTemplate { account, summary }.render()?))
+}
+
+fn overview_summary(state: &AppState, account_id: &str, period: UsagePeriod) -> Result<OverviewSummary, AppError> {
+	let providers = state.database.list_providers(account_id)?;
+	let mut tracked_spend = 0.0;
+	let mut nearing_limit = 0_usize;
+	let mut newest_refresh = None;
+	let provider_usage = providers
+		.into_iter()
+		.map(|provider| {
+			let snapshot = state.database.snapshot_for_period(&provider.id, period)?;
+			if let Some(snapshot) = &snapshot {
+				tracked_spend += snapshot.cost.unwrap_or_default().max(0.0);
+				newest_refresh = newest_refresh.max(snapshot.timestamp.parse::<i64>().ok());
+			}
+			let usage = overview_provider_usage(&provider, snapshot.as_ref());
+			if usage.is_nearing_limit {
+				nearing_limit += 1;
+			}
+			Ok(usage)
+		})
+		.collect::<Result<Vec<_>, AppError>>()?;
+	Ok(OverviewSummary {
+		tracked_spend: format_usd(tracked_spend),
+		nearing_limit: format!("{nearing_limit:02}"),
+		connected_count: provider_usage.len(),
+		last_refreshed: newest_refresh
+			.map(|timestamp| {
+				chrono::DateTime::from_timestamp(timestamp, 0)
+					.map(|date| date.format("%b %-d, %H:%M UTC").to_string())
+					.unwrap_or_else(|| "Not refreshed".to_owned())
+			})
+			.unwrap_or_else(|| "Not refreshed".to_owned()),
+		provider_usage,
+	})
+}
+
+fn overview_provider_usage(provider: &ProviderConfig, snapshot: Option<&UsageSnapshot>) -> OverviewProviderUsage {
+	let (label, used, limit, percent) = match (provider.provider_type.as_str(), snapshot) {
+		("openai", Some(snapshot)) => snapshot
+			.metrics
+			.iter()
+			.find(|metric| metric.id == "organization_spend_limit")
+			.map(|metric| {
+				let limit = metric.limit.unwrap_or_default();
+				(
+					"Organization costs",
+					format_usd(metric.used),
+					format_usd(limit),
+					percent_of(metric.used, limit),
+				)
+			})
+			.unwrap_or(("Organization costs", "—".to_owned(), "No limit".to_owned(), 0.0)),
+		("apify", Some(snapshot)) => snapshot
+			.metrics
+			.iter()
+			.find(|metric| metric.id == "monthly_credit_allowance")
+			.and_then(|metric| metric.limit.map(|limit| (metric.used, limit)))
+			.map(|(used, limit)| {
+				(
+					"Monthly credit use",
+					format_usd(used),
+					format_usd(limit),
+					percent_of(used, limit),
+				)
+			})
+			.unwrap_or(("Monthly credit use", "—".to_owned(), "No allowance".to_owned(), 0.0)),
+		("resend", Some(snapshot)) => {
+			let sent = snapshot
+				.metrics
+				.iter()
+				.find(|metric| metric.id == "emails_sent_current_month")
+				.map_or(0.0, |metric| metric.used);
+			let received = snapshot
+				.metrics
+				.iter()
+				.find(|metric| metric.id == "emails_received_current_month")
+				.map_or(0.0, |metric| metric.used);
+			let used = sent + received;
+			let limit = provider.monthly_quota as f64;
+			(
+				"Emails sent + received",
+				format_email_count(used),
+				format_email_count(limit),
+				percent_of(used, limit),
+			)
+		}
+		(_, _) => ("Current-month usage", "—".to_owned(), "Not refreshed".to_owned(), 0.0),
+	};
+	let percent = percent.clamp(0.0, 100.0);
+	OverviewProviderUsage {
+		name: provider.display_name.clone(),
+		provider_type: provider.provider_type.clone(),
+		label: label.to_owned(),
+		used,
+		limit,
+		percent: format!("{percent:.0}"),
+		is_nearing_limit: percent >= 80.0,
+	}
+}
+
+fn percent_of(used: f64, limit: f64) -> f64 {
+	if limit > 0.0 { used / limit * 100.0 } else { 0.0 }
+}
+
+async fn dashboard(
 	State(state): State<Arc<AppState>>,
 	headers: HeaderMap,
 	Query(query): Query<MonthQuery>,
@@ -987,8 +1100,11 @@ mod tests {
 
 	#[test]
 	fn preserves_selected_month_during_authentication_validation() {
-		assert_eq!(month_from_url("http://127.0.0.1:5050/?month=2026-08"), Some("2026-08"));
-		assert_eq!(month_from_url("http://127.0.0.1:5050/"), None);
+		assert_eq!(
+			month_from_url("http://127.0.0.1:5050/dashboard?month=2026-08"),
+			Some("2026-08")
+		);
+		assert_eq!(month_from_url("http://127.0.0.1:5050/dashboard"), None);
 	}
 }
 
@@ -1003,6 +1119,31 @@ struct DashboardTemplate {
 	refresh_url: String,
 	show_dashboard_skeleton: bool,
 	validate_authentication: bool,
+}
+
+#[derive(Template)]
+#[template(path = "pages/overview.html")]
+struct OverviewTemplate {
+	account: Option<Account>,
+	summary: Option<OverviewSummary>,
+}
+
+struct OverviewSummary {
+	tracked_spend: String,
+	nearing_limit: String,
+	connected_count: usize,
+	last_refreshed: String,
+	provider_usage: Vec<OverviewProviderUsage>,
+}
+
+struct OverviewProviderUsage {
+	name: String,
+	provider_type: String,
+	label: String,
+	used: String,
+	limit: String,
+	percent: String,
+	is_nearing_limit: bool,
 }
 #[derive(Template)]
 #[template(path = "pages/providers.html")]
