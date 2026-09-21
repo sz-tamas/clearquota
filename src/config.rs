@@ -27,7 +27,7 @@ impl Config {
             .unwrap_or(3000);
         let database_path = env::var("USAGE_DASH_DATABASE_PATH")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("data/usage-dashboard.sqlite3"));
+            .unwrap_or_else(|_| PathBuf::from("data/clearquota.sqlite3"));
         Ok(Self {
             bind_address: format!("127.0.0.1:{port}"),
             database_path,

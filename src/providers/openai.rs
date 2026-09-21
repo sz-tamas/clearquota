@@ -329,7 +329,7 @@ async fn get_json(
         .get(url)
         .query(query)
         .bearer_auth(secret.expose_secret())
-        .header("User-Agent", "rust-usage-dash/0.1")
+        .header("User-Agent", "clearquota/0.1")
         .send()
         .await
         .map_err(|_| ProviderError::Request)?;

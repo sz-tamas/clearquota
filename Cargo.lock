@@ -206,6 +206,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "clearquota"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "async-trait",
+ "axum",
+ "base64",
+ "chrono",
+ "reqwest",
+ "rusqlite",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "zeroize",
+]
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -906,26 +926,6 @@ dependencies = [
  "hashlink",
  "libsqlite3-sys",
  "smallvec",
-]
-
-[[package]]
-name = "rust-usage-dash"
-version = "0.1.0"
-dependencies = [
- "askama",
- "async-trait",
- "axum",
- "base64",
- "chrono",
- "reqwest",
- "rusqlite",
- "secrecy",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tower-http",
- "zeroize",
 ]
 
 [[package]]

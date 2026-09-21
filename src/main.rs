@@ -33,10 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(&config.bind_address).await?;
-    println!(
-        "Usage Dashboard listening on http://{}",
-        config.bind_address
-    );
+    println!("ClearQuota listening on http://{}", config.bind_address);
     axum::serve(listener, app).await?;
     Ok(())
 }

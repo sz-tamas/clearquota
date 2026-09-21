@@ -1,4 +1,4 @@
-# Rust Usage Dashboard
+# ClearQuota
 
 [![CI](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -9,7 +9,7 @@
 
 A secure localhost-only dashboard for provider usage. It persists provider metadata and normalized usage snapshots in SQLite; provider credential values are fetched only when a refresh runs and are never stored in the database or sent to the browser.
 
-![Usage Dashboard screenshot](usage-dash.png)
+![ClearQuota screenshot](clearquota.png)
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ mise run start
 
 `mise run start` opens `http://127.0.0.1:5050`, as configured in `mise.toml`. Direct `cargo run` defaults to `http://127.0.0.1:3000`. Set `USAGE_DASH_PORT` to choose another local port.
 
-The database defaults to `data/usage-dashboard.sqlite3`; override that non-secret path with `USAGE_DASH_DATABASE_PATH` if desired.
+The database defaults to `data/clearquota.sqlite3`; override that non-secret path with `USAGE_DASH_DATABASE_PATH` if desired.
 
 `mise run install` downloads the Tailwind standalone binary to `.tools/`. No `package.json` or `node_modules` is used. `mise run css:build` recompiles `static/css/output.css` from `static/css/input.css`.
 
@@ -41,7 +41,7 @@ mise run dev
 Enter a reference in this exact form:
 
 ```text
-projects/PROJECT_ID/secrets/SECRET_ID/versions/VERSION
+SECRET_ID
 ```
 
 You can also enter just the Secret Manager secret name (for example, `OPENAI_ADMIN_KEY`); the dashboard expands it to the active Google project and `versions/latest`. Enter a secret reference, never the provider API key itself. The dashboard resolves that reference only while refreshing the provider.
@@ -84,7 +84,7 @@ Enter the plan label plus monthly and daily email quotas. The dashboard collects
 
 ### Security comparison
 
-| Risk / property | Rust Usage Dashboard | Other local credential-storing dashboard |
+| Risk / property | ClearQuota | Other local credential-storing dashboard |
 | --- | --- | --- |
 | Persistent provider secrets on disk | **No** | **Yes**, commonly encrypted in an OS keyring |
 | Provider secret present when app is idle | **No** | **Yes**, persisted locally |

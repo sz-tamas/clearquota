@@ -5,8 +5,11 @@
 @theme {
   --color-ink: #172033;
   --color-canvas: #f6f7fb;
-  --color-brand: #5b52e8;
-  --color-brand-dark: #4438c7;
+  --color-brand: #1a8989;
+  --color-brand-dark: #126666;
+  --color-brand-light: #e4f1f1;
+  --color-violet-50: #e4f1f1;
+  --color-violet-100: #e4f1f1;
 }
 
 @layer base {
