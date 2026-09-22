@@ -1,4 +1,4 @@
-# ClearQuota
+[![Visit clearquota.app](cq_banner_lg.png)](https://clearquota.app)
 
 [![CI](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml)
 [![License: AGPL--3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
@@ -7,9 +7,11 @@
 [![HTMX](https://img.shields.io/badge/-HTMX-3366CC?logo=htmx&logoColor=white)](https://htmx.org/)
 [![Askama](https://img.shields.io/badge/-Askama-000000?logo=rust&logoColor=white)](https://github.com/askama-rs/askama)
 
-[![Visit clearquota.app](cq_banner_lg.png)](https://clearquota.app)
 
-ClearQuota is a localhost-only dashboard for checking developer-service usage. It stores provider setup and sanitized usage history in SQLite; API keys are fetched from Google Secret Manager only during a refresh and never stored, logged, or sent to the browser.
+---
+
+
+Local-first dashboard for monitoring usage and quotas across developer services, with provider credentials resolved just-in-time from external secret storage and never persisted locally, logged, or sent to the browser.
 
 ## What it does
 
@@ -21,7 +23,7 @@ ClearQuota is a localhost-only dashboard for checking developer-service usage. I
 
 Supported providers: **OpenAI, Apify, and Resend**.
 
-## Start
+## Getting started
 
 Prerequisites: [mise](https://mise.jdx.dev/), the [Google Cloud CLI](https://cloud.google.com/sdk), and IAM access to the Secret Manager secrets you intend to use.
 
@@ -34,21 +36,36 @@ Open `http://127.0.0.1:5050`. The first-run flow asks for a Google Cloud project
 
 The database is `data/clearquota.sqlite3` by default; set `USAGE_DASH_DATABASE_PATH` to use another non-secret path. Set `USAGE_DASH_PORT` to change the port.
 
-## Development
 
-```bash
-mise run dev
-mise run check
-mise run test
-```
 
-Tailwind uses its standalone binary: `mise run install` puts it in `.tools/`, and `mise run css:build` rebuilds the CSS. No `package.json` or `node_modules` is required.
+## Security boundary
 
-## Security
+- Localhost only: the server binds to `127.0.0.1`.
+- Provider keys never enter SQLite, browser responses, configuration, environment variables, or logs; only Secret Manager identifiers and sanitized metrics are persisted.
+- Resolved keys use `secrecy::SecretString` and `zeroize`, and are exposed only for the transient provider authorization request. Google ADC is managed locally by `gcloud` and is separate from provider credentials.
 
-- The server binds only to `127.0.0.1`.
-- SQLite contains Secret Manager identifiers and sanitized metrics, never provider credential values.
-- Credentials are held transiently as `secrecy::SecretString`, zeroized after use, and exposed only to make the provider authorization request.
-- Google ADC is local to `gcloud` and separate from provider credentials.
+### Security comparison
 
-Use only accounts and secrets you are authorized to access. Before using production credentials, run `mise run check` and `mise run test`, and review the relevant IAM grants.
+| Risk / property | ClearQuota | Other local credential-storing dashboard |
+| --- | --- | --- |
+| Persistent provider secrets on disk | **No** | **Yes**, commonly encrypted in an OS keyring |
+| Provider secret present when app is idle | **No** | **Yes**, persisted locally |
+| Provider secret present while fetching | **Yes, transiently** | **Yes, after decrypting** |
+| Memory cleanup after use | **Explicit zeroization** with `secrecy` / `zeroize` | Depends on implementation |
+| Local-only execution | **Yes** | Often yes |
+| Third-party server sees credentials | **No** | Typically no |
+| Secret source | Google Secret Manager | OS keyring |
+| App needs raw provider key stored locally | **No** | **Yes** |
+| Theft of app data directory | Stats/meta only; no provider credentials | Credential ciphertext and/or keyring references may exist |
+| Theft of OS keyring | Not enough to obtain provider keys that exist only in Google Secret Manager | May expose stored provider credentials |
+| Runtime process compromise | Can capture a key during a fetch | Can capture a key whenever decrypted or used |
+| Memory inspection | Same fundamental limitation during active use | Same fundamental limitation during active use |
+| Post-fetch memory residue | **Mitigated by zeroization** | Depends on handling |
+| Credential rotation | Managed centrally in Google Secret Manager | Must update the locally stored secret |
+| Multi-device credential consistency | Naturally centralized | Separate local keyring state per machine |
+
+### Authorization and credential disclaimer
+
+This is a local tool run by you, for accounts and secrets you are authorized to use. No dashboard operator, maintainer, hosted service, or browser user is sent your credential value, and the application does not display, persist, or log it. The credential is retrieved locally from the Secret Manager reference you choose and is sent only as a transient HTTPS authorization header to the provider you configured. You are responsible for granting Google IAM access only to the intended secrets and for using provider credentials with the permissions you intend.
+
+Before using production credentials, run `mise run check` and `mise run test`, then review IAM grants and provider-specific response handling.
