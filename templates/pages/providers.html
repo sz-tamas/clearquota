@@ -19,7 +19,7 @@
             <aside id="sidebar"
                    data-sidebar
                    inert
-                   class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-slate-200 bg-white px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none"
+                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-slate-100 px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none"
                    aria-label="Primary navigation"
                    aria-hidden="true">
                 <a class="block px-2" href="/">
@@ -44,36 +44,27 @@
       title="Coming soon"><i class="size-5" data-lucide="bell" aria-hidden="true"></i>Alerts</span></li>
                     </ul>
                 </nav>
-                <div class="mt-1">
+                <div class="mt-1 flex flex-1 flex-col">
                     <a data-sidebar-nav
                        class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                        href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a><button data-sidebar-settings
+        hx-get="/account/settings"
+        hx-target="#provider-dialog"
+        hx-swap="innerHTML"
         class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
         type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button>
+                    <div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>
                 </div>
             </aside>
-            <div class="min-w-0 flex-1">
-                <header class="sticky top-0 z-20 border-b border-slate-200 bg-white">
-                    <div class="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-end px-5">
-                        <button class="mr-auto grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 min-[800px]:hidden"
-                                type="button"
-                                data-sidebar-toggle
-                                aria-controls="sidebar"
-                                aria-expanded="false"
-                                aria-label="Open navigation">
-                            <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
-                        </button>
-                        <div class="flex items-center gap-2">
-                            <button class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
-                                    aria-label="Project settings"
-                                    hx-get="/account/settings"
-                                    hx-target="#provider-dialog"
-                                    hx-swap="innerHTML">
-                                <i class="size-5" data-lucide="settings" aria-hidden="true"></i>
-                            </button><span class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600">{{ account.project_id }}</span>
-                        </div>
-                    </div>
-                </header>
+            <div class="relative min-w-0 flex-1 bg-white">
+                <button class="fixed left-3 top-3 z-20 grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 min-[800px]:hidden"
+                        type="button"
+                        data-sidebar-toggle
+                        aria-controls="sidebar"
+                        aria-expanded="false"
+                        aria-label="Open navigation">
+                    <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
+                </button>
                 <main class="mx-auto max-w-6xl px-5 py-10">
                     <p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Configuration</p>
                     <div class="mt-2 flex flex-wrap items-center justify-between gap-4">
@@ -264,6 +255,6 @@
             {% endif %}
             <div id="provider-dialog"></div>
         </div>
-        <script>const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);if(event.target.closest('[data-sidebar-settings]'))document.querySelector('[aria-label="Project settings"]')?.click();});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
+        <script>const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
     </body>
 </html>

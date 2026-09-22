@@ -19,7 +19,7 @@
                     aria-label="Close navigation"></button>
             <aside id="sidebar"
                    data-sidebar
-                   class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full border-r border-slate-200 bg-white px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none"
+                   class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-slate-100 px-4 py-5 shadow-xl transition-transform duration-300 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-screen min-[800px]:translate-x-0 min-[800px]:shadow-none"
                    aria-label="Primary navigation"
                    aria-hidden="true">
                 <a class="block px-2" href="/">
@@ -44,111 +44,114 @@
       title="Coming soon"><i class="size-5" data-lucide="bell" aria-hidden="true"></i>Alerts</span></li>
                     </ul>
                 </nav>
-                <div class="mt-1">
+                <div class="mt-1 flex flex-1 flex-col">
                     <a data-sidebar-nav
                        class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                        href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a>
                     {% match account %}{% when Some with (account) %}<button data-sidebar-settings
+        hx-get="/account/settings"
+        hx-target="#provider-dialog"
+        hx-swap="innerHTML"
         class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
-        type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
+        type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
       aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}
             </div>
         </aside>
-        <div class="min-w-0 flex-1">
-            <header class="sticky top-0 z-20 border-b border-slate-200 bg-white"><div class="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-end px-5"><button class="mr-auto grid size-10 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 min-[800px]:hidden"
-        type="button"
-        data-sidebar-toggle
-        aria-controls="sidebar"
-        aria-expanded="false"
-        aria-label="Open navigation"><i class="size-5" data-lucide="menu" aria-hidden="true"></i></button>{% match account %}{% when Some with (account) %}<div class="flex items-center gap-2"><button class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
-        aria-label="Project settings"
-        hx-get="/account/settings"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"><i class="size-5" data-lucide="settings" aria-hidden="true"></i></button><span class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600">{{ account.project_id }}</span></div>{% when None %}{% endmatch %}</div></header>
-        <main class="mx-auto max-w-6xl px-5 py-10">
-            <p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p>
-            <h1 class="mt-2 text-4xl font-bold tracking-tight text-ink">Overview</h1>
-            {% match summary %}
-            {% when Some with (summary) %}
-            <section class="mt-8 grid gap-4 md:grid-cols-3" aria-label="Usage summary">
-                <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
-                    <p class="text-sm font-medium text-slate-500">Tracked spend</p>
-                    <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.tracked_spend }}</p>
-                    <p class="mt-2 text-xs text-slate-500">Current calendar month</p>
-                </article>
-                <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
-                    <p class="text-sm font-medium text-slate-500">Services nearing limit</p>
-                    <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.nearing_limit }}</p>
-                    <p class="mt-2 text-xs text-slate-500">of {{ summary.connected_count }} connected</p>
-                </article>
-                <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
-                    <p class="text-sm font-medium text-slate-500">Last refreshed</p>
-                    <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ summary.last_refreshed }}</p>
-                    <p class="mt-2 text-xs text-slate-500">Latest provider snapshot</p>
-                </article>
-            </section>
-            <section class="mt-12">
-                <div class="flex flex-wrap items-end justify-between gap-4 pb-5">
-                    <div>
-                        <h2 class="text-xl font-bold tracking-tight text-ink">Provider usage</h2>
-                        <p class="mt-1 text-sm text-slate-500">Current calendar month</p>
+        <div class="relative min-w-0 flex-1 bg-white">
+            <button class="fixed left-3 top-3 z-20 grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 min-[800px]:hidden"
+                    type="button"
+                    data-sidebar-toggle
+                    aria-controls="sidebar"
+                    aria-expanded="false"
+                    aria-label="Open navigation">
+                <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
+            </button>
+            <main class="mx-auto max-w-6xl px-5 py-10">
+                <p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p>
+                <h1 class="mt-2 text-4xl font-bold tracking-tight text-ink">Overview</h1>
+                {% match summary %}
+                {% when Some with (summary) %}
+                <section class="mt-8 grid gap-4 md:grid-cols-3" aria-label="Usage summary">
+                    <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
+                        <p class="text-sm font-medium text-slate-500">Tracked spend</p>
+                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.tracked_spend }}</p>
+                        <p class="mt-2 text-xs text-slate-500">Current calendar month</p>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
+                        <p class="text-sm font-medium text-slate-500">Services nearing limit</p>
+                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.nearing_limit }}</p>
+                        <p class="mt-2 text-xs text-slate-500">of {{ summary.connected_count }} connected</p>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
+                        <p class="text-sm font-medium text-slate-500">Last refreshed</p>
+                        <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ summary.last_refreshed }}</p>
+                        <p class="mt-2 text-xs text-slate-500">Latest provider snapshot</p>
+                    </article>
+                </section>
+                <section class="mt-12">
+                    <div class="flex flex-wrap items-end justify-between gap-4 pb-5">
+                        <div>
+                            <h2 class="text-xl font-bold tracking-tight text-ink">Provider usage</h2>
+                            <p class="mt-1 text-sm text-slate-500">Current calendar month</p>
+                        </div>
+                        <a data-sidebar-nav
+                           class="text-sm font-medium text-teal-700 hover:text-teal-800"
+                           href="/providers">Manage providers <span aria-hidden="true">→</span></a>
                     </div>
-                    <a data-sidebar-nav
-                       class="text-sm font-medium text-teal-700 hover:text-teal-800"
-                       href="/providers">Manage providers <span aria-hidden="true">→</span></a>
-                </div>
-                <div class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 shadow-sm">
-                    {% for provider in summary.provider_usage %}
-                        <article class="grid gap-4 py-7 md:grid-cols-[minmax(13rem,1fr)_minmax(12rem,1.1fr)_minmax(8rem,.65fr)_auto] md:items-center">
-                            <div class="flex items-center gap-4">
-                                <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100">
-                                    {% if provider.provider_type == "openai" %}
-                                        <img class="size-7" src="/static/images/providers/openai.svg" alt="">
-                                    {% else if provider.provider_type == "apify" %}
-                                        <img class="size-7" src="/static/images/providers/apify.svg" alt="">
-                                    {% else if provider.provider_type == "resend" %}
-                                        <img class="size-7" src="/static/images/providers/resend.svg" alt="">
-                                    {% else %}
-                                        <i class="size-6 text-slate-500" data-lucide="blocks" aria-hidden="true"></i>
-                                    {% endif %}
+                    <div class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white px-6 shadow-sm">
+                        {% for provider in summary.provider_usage %}
+                            <article class="grid gap-4 py-7 md:grid-cols-[minmax(13rem,1fr)_minmax(12rem,1.1fr)_minmax(8rem,.65fr)_auto] md:items-center">
+                                <div class="flex items-center gap-4">
+                                    <div class="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100">
+                                        {% if provider.provider_type == "openai" %}
+                                            <img class="size-7" src="/static/images/providers/openai.svg" alt="">
+                                        {% else if provider.provider_type == "apify" %}
+                                            <img class="size-7" src="/static/images/providers/apify.svg" alt="">
+                                        {% else if provider.provider_type == "resend" %}
+                                            <img class="size-7" src="/static/images/providers/resend.svg" alt="">
+                                        {% else %}
+                                            <i class="size-6 text-slate-500"
+                                               data-lucide="blocks"
+                                               aria-hidden="true"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-semibold text-ink">{{ provider.name }}</h3>
+                                        <p class="text-xs text-slate-500">{{ provider.label }}</p>
+                                    </div>
+                                </div>
+                                <div class="h-2.5 overflow-hidden rounded-full bg-slate-200"
+                                     aria-label="{{ provider.percent }} percent used">
+                                    <div class="h-full rounded-full {% if provider.is_nearing_limit %}bg-amber-500{% else %}bg-teal-600{% endif %}"
+                                         style="width: {{ provider.percent }}%"></div>
                                 </div>
                                 <div>
-                                    <h3 class="text-base font-semibold text-ink">{{ provider.name }}</h3>
-                                    <p class="text-xs text-slate-500">{{ provider.label }}</p>
+                                    <p class="text-base font-semibold text-ink">{{ provider.used }}</p>
+                                    <p class="text-xs text-slate-500">of {{ provider.limit }}</p>
                                 </div>
+                                {% if provider.is_nearing_limit %}<span class="w-fit rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Watch</span>{% else %}<span class="w-fit rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">On track</span>{% endif %}
+                            </article>
+                        {% else %}
+                            <div class="py-12 text-center">
+                                <p class="text-base text-slate-500">No providers connected yet.</p>
+                                <a data-sidebar-nav
+                                   class="mt-3 inline-block font-medium text-teal-700 hover:text-teal-800"
+                                   href="/providers">Add a provider</a>
                             </div>
-                            <div class="h-2.5 overflow-hidden rounded-full bg-slate-200"
-                                 aria-label="{{ provider.percent }} percent used">
-                                <div class="h-full rounded-full {% if provider.is_nearing_limit %}bg-amber-500{% else %}bg-teal-600{% endif %}"
-                                     style="width: {{ provider.percent }}%"></div>
-                            </div>
-                            <div>
-                                <p class="text-base font-semibold text-ink">{{ provider.used }}</p>
-                                <p class="text-xs text-slate-500">of {{ provider.limit }}</p>
-                            </div>
-                            {% if provider.is_nearing_limit %}<span class="w-fit rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Watch</span>{% else %}<span class="w-fit rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">On track</span>{% endif %}
-                        </article>
-                    {% else %}
-                        <div class="py-12 text-center">
-                            <p class="text-base text-slate-500">No providers connected yet.</p>
-                            <a data-sidebar-nav
-                               class="mt-3 inline-block font-medium text-teal-700 hover:text-teal-800"
-                               href="/providers">Add a provider</a>
-                        </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% when None %}
-            <section class="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
-                <p class="text-base text-slate-500">Connect a provider to start tracking usage.</p>
-                <a data-sidebar-nav
-                   class="mt-4 inline-block font-medium text-teal-700 hover:text-teal-800"
-                   href="/dashboard">Set up ClearQuota</a>
-            </section>
-        {% endmatch %}
-    </main>
-</div>
-<div id="provider-dialog"></div>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% when None %}
+                <section class="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-16 text-center">
+                    <p class="text-base text-slate-500">Connect a provider to start tracking usage.</p>
+                    <a data-sidebar-nav
+                       class="mt-4 inline-block font-medium text-teal-700 hover:text-teal-800"
+                       href="/dashboard">Set up ClearQuota</a>
+                </section>
+            {% endmatch %}
+        </main>
+    </div>
+    <div id="provider-dialog"></div>
 </div>
 {% include "partials/onboarding_modal.html" %}
 {% match account %}{% when Some with (account) %}
@@ -159,6 +162,6 @@
 {% endif %}
 {% when None %}{% endmatch %}
 </div>
-<script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);if(event.target.closest('[data-sidebar-settings]'))document.querySelector('[aria-label="Project settings"]')?.click();});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
+<script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
 </body>
 </html>
