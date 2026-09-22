@@ -7,9 +7,9 @@
 [![HTMX](https://img.shields.io/badge/-HTMX-3366CC?logo=htmx&logoColor=white)](https://htmx.org/)
 [![Askama](https://img.shields.io/badge/-Askama-000000?logo=rust&logoColor=white)](https://github.com/askama-rs/askama)
 
-ClearQuota is a localhost-only dashboard for checking developer-service usage. It stores provider setup and sanitized usage history in SQLite; API keys are fetched from Google Secret Manager only during a refresh and never stored, logged, or sent to the browser.
+[![Visit clearquota.app](cq_banner_lg.png)](https://clearquota.app)
 
-![ClearQuota screenshot](clearquota.png)
+ClearQuota is a localhost-only dashboard for checking developer-service usage. It stores provider setup and sanitized usage history in SQLite; API keys are fetched from Google Secret Manager only during a refresh and never stored, logged, or sent to the browser.
 
 ## What it does
 
