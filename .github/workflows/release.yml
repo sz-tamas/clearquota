@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            asset_name: linux_x86_64
+          - runner: ubuntu-24.04-arm
+            asset_name: linux_aarch64
+          - runner: macos-13
+            asset_name: macos_x86_64
+          - runner: macos-14
+            asset_name: macos_aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build compiled CSS
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64) tailwind_asset=tailwindcss-linux-x64 ;;
+            Linux-aarch64) tailwind_asset=tailwindcss-linux-arm64 ;;
+            Darwin-x86_64) tailwind_asset=tailwindcss-macos-x64 ;;
+            Darwin-arm64) tailwind_asset=tailwindcss-macos-arm64 ;;
+            *) echo "Unsupported release runner" >&2; exit 1 ;;
+          esac
+          curl -fsSL -o "$RUNNER_TEMP/tailwindcss" "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/$tailwind_asset"
+          chmod +x "$RUNNER_TEMP/tailwindcss"
+          "$RUNNER_TEMP/tailwindcss" -i static/css/input.css -o static/css/output.css --minify
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Package release asset
+        shell: bash
+        run: |
+          package_dir="$RUNNER_TEMP/clearquota-package"
+          mkdir -p "$package_dir/static"
+          cp target/release/clearquota "$package_dir/clearquota"
+          cp -R static/. "$package_dir/static/"
+          tar -C "$package_dir" -czf "clearquota_${{ matrix.asset_name }}.tar.gz" clearquota static
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clearquota_${{ matrix.asset_name }}
+          path: clearquota_${{ matrix.asset_name }}.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum clearquota_*.tar.gz > SHA256SUMS
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" release-assets/* scripts/install.sh \
+            --repo "${{ github.repository }}" \
+            --verify-tag \
+            --title "ClearQuota $RELEASE_TAG" \
+            --generate-notes
