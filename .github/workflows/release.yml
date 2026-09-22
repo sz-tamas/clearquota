@@ -24,7 +24,7 @@ jobs:
             asset_name: linux_x86_64
           - runner: ubuntu-24.04-arm
             asset_name: linux_aarch64
-          - runner: macos-13
+          - runner: macos-15-intel
             asset_name: macos_x86_64
           - runner: macos-14
             asset_name: macos_aarch64
