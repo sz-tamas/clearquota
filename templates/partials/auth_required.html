@@ -1,12 +1,46 @@
 <div id="auth-dialog"
-     class="fixed inset-0 z-30 grid place-items-center bg-slate-950/25 p-4"><section class="w-full max-w-xl rounded-2xl bg-white p-7 shadow-2xl"
-         role="dialog"
-         aria-modal="true"
-         aria-labelledby="google-auth-title"><p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Google connection required</p><h2 id="google-auth-title" class="mt-1 text-xl font-bold">Authenticate with Google</h2><p class="mt-4 text-sm text-slate-600">This dashboard needs Application Default Credentials to read Secret Manager in <strong>{{ account.project_id }}</strong>. Complete sign-in in the browser tab, then return here and refresh access.</p><div class="mt-6 flex flex-col items-center text-center">{% if account.auth_status == "authenticating" %}<button class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white"
-        hx-post="/onboarding/auth/check"
-        hx-target="#app"
-        hx-select="#app"
-        hx-swap="outerHTML">I’ve completed sign-in — refresh access</button><p class="mt-4 text-sm text-brand">Google sign-in was opened in your browser. It will not return to this page automatically.</p>{% else %}<button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-        hx-post="/onboarding/auth"
-        hx-target="#auth-dialog"
-        hx-swap="outerHTML">Open Google sign-in</button>{% endif %}{% match account.auth_error %}{% when Some with (error) %}<p class="mt-3 text-sm text-rose-600">{{ error }}</p>{% when None %}{% endmatch %}</div></section></div>
+     class="fixed inset-0 z-30 grid place-items-center bg-slate-950/25 p-4">
+    <section class="w-full max-w-xl rounded-2xl bg-white p-7 shadow-2xl"
+             role="dialog"
+             aria-modal="true"
+             aria-labelledby="google-auth-title">
+        <p class="text-xs font-bold tracking-[.15em] text-brand uppercase">Google connection required</p>
+        <h2 id="google-auth-title" class="mt-1 text-xl font-bold">Authenticate with Google</h2>
+        <p class="mt-4 text-sm text-slate-600">This dashboard needs Application Default Credentials to read Secret Manager in <strong>{{ account.project_id }}</strong>. Complete sign-in in your browser, then return here to check access.</p>
+        <div class="mt-6 flex flex-col items-center gap-3 text-center">
+            {% if account.auth_status == "authenticating" || account.auth_status == "failed" %}
+                <button class="auth-action inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors enabled:hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
+                        hx-post="/onboarding/auth/check"
+                        hx-target="#app"
+                        hx-select="#app"
+                        hx-swap="outerHTML"
+                        hx-disabled-elt="this">
+                    <span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                          aria-hidden="true"></span>
+                    I’ve completed sign-in — refresh access
+                </button>
+                <button class="auth-action inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-brand transition-colors enabled:hover:bg-brand-light disabled:cursor-wait disabled:opacity-70"
+                        hx-post="/onboarding/auth"
+                        hx-target="#auth-dialog"
+                        hx-swap="outerHTML"
+                        hx-disabled-elt="this">
+                    <span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-brand/40 border-t-brand"
+                          aria-hidden="true"></span>
+                    Try opening Google sign-in again
+                </button>
+                <p class="text-sm text-brand" role="status">If no browser window appears, try opening Google sign-in again. After signing in, return here and refresh access. This page will not update automatically.</p>
+            {% else %}
+                <button class="auth-action inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors enabled:hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
+                        hx-post="/onboarding/auth"
+                        hx-target="#auth-dialog"
+                        hx-swap="outerHTML"
+                        hx-disabled-elt="this">
+                    <span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                          aria-hidden="true"></span>
+                    Open Google sign-in
+                </button>
+            {% endif %}
+            {% match account.auth_error %}{% when Some with (error) %}<p class="text-sm text-rose-600">{{ error }}</p>{% when None %}{% endmatch %}
+    </div>
+</section>
+</div>

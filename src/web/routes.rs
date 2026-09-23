@@ -396,6 +396,8 @@ async fn start_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
 	tokio::spawn(async move {
 		let _ = begin_authentication(&account.project_id).await;
 	});
+	// Give the desktop browser launch a moment before replacing the launch button.
+	tokio::time::sleep(std::time::Duration::from_millis(700)).await;
 	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
 	Ok(Html(AuthRequiredTemplate { account }.render()?))
 }
@@ -413,7 +415,7 @@ async fn check_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
 			&account.id,
 			"failed",
 			None,
-			Some("Google credentials are not ready yet. Complete sign-in, then check again."),
+			Some("Google credentials are not ready yet. Complete sign-in, then refresh access again."),
 		)?,
 	}
 	render_dashboard(&state)
