@@ -687,10 +687,10 @@ fn render_dashboard_page(
 	auth_error: Option<&str>,
 ) -> Result<Html<String>, AppError> {
 	let mut account = account_for_render(state)?;
-	if let Some(account) = account.as_mut() {
-		if let Some(error) = auth_error {
-			account.auth_error = Some(error.to_owned());
-		}
+	if let Some(account) = account.as_mut()
+		&& let Some(error) = auth_error
+	{
+		account.auth_error = Some(error.to_owned());
 	}
 	let show_dashboard_skeleton = account
 		.as_ref()
@@ -719,10 +719,10 @@ fn render_dashboard_page(
 
 fn account_for_render(state: &AppState) -> Result<Option<Account>, AppError> {
 	let mut account = state.database.active_account()?;
-	if let Some(account) = account.as_mut() {
-		if account.auth_error.as_deref() == Some(AUTH_CHECK_ERROR) {
-			account.auth_error = None;
-		}
+	if let Some(account) = account.as_mut()
+		&& account.auth_error.as_deref() == Some(AUTH_CHECK_ERROR)
+	{
+		account.auth_error = None;
 	}
 	Ok(account)
 }
