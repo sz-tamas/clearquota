@@ -10,7 +10,7 @@
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="/static/navigation.js?v=3"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
-        <script defer src="/static/dashboard-motion.js"></script>
+        <script defer src="/static/dashboard-motion.js?v=2"></script>
     </head>
     <body>
         <div id="app">
@@ -76,13 +76,16 @@
                 <section class="mt-8 grid gap-4 md:grid-cols-3" aria-label="Usage summary">
                     <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
                         <p class="text-sm font-medium text-slate-500">Tracked spend</p>
-                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.tracked_spend }}</p>
+                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink"
+                           data-motion-number>{{ summary.tracked_spend }}</p>
                         <p class="mt-2 text-xs text-slate-500">Current calendar month</p>
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
                         <p class="text-sm font-medium text-slate-500">Services nearing limit</p>
-                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink">{{ summary.nearing_limit }}</p>
-                        <p class="mt-2 text-xs text-slate-500">of {{ summary.connected_count }} connected</p>
+                        <p class="mt-3 text-3xl font-bold tracking-tight text-ink"
+                           data-motion-number>{{ summary.nearing_limit }}</p>
+                        <p class="mt-2 text-xs text-slate-500"
+                           data-motion-number>of {{ summary.connected_count }} connected</p>
                     </article>
                     <article class="rounded-2xl border border-slate-200 bg-slate-100 p-6 shadow-sm">
                         <p class="text-sm font-medium text-slate-500">Last refreshed</p>
@@ -125,11 +128,13 @@
                                 <div class="h-2.5 overflow-hidden rounded-full bg-slate-200"
                                      aria-label="{{ provider.percent }} percent used">
                                     <div class="h-full rounded-full {% if provider.is_nearing_limit %}bg-amber-500{% else %}bg-teal-600{% endif %}"
+                                         data-motion-progress
                                          style="width: {{ provider.percent }}%"></div>
                                 </div>
                                 <div>
-                                    <p class="text-base font-semibold text-ink">{{ provider.used }}</p>
-                                    <p class="text-xs text-slate-500">of {{ provider.limit }}</p>
+                                    <p class="text-base font-semibold text-ink"
+                                       data-motion-number>{{ provider.used }}</p>
+                                    <p class="text-xs text-slate-500" data-motion-number>of {{ provider.limit }}</p>
                                 </div>
                                 {% if provider.is_nearing_limit %}<span class="w-fit rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Watch</span>{% else %}<span class="w-fit rounded-xl bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">On track</span>{% endif %}
                             </article>

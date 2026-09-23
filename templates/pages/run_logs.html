@@ -74,7 +74,7 @@
             <div id="provider-dialog"></div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
-        <script src="/static/dashboard-motion.js"></script>
+        <script src="/static/dashboard-motion.js?v=2"></script>
         <script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
     </body>
 </html>

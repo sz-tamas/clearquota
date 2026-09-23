@@ -73,7 +73,7 @@
   function initializeDashboardMotion(root = document) {
     if (document.querySelector("#auth-validation, #auth-dialog")) return;
     root.querySelectorAll("[data-motion-number]").forEach(animateNumberText);
-    root.querySelectorAll("[data-provider-card] [style*='width:']").forEach(animateProgressBar);
+    root.querySelectorAll("[data-provider-card] [style*='width:'], [data-motion-progress]").forEach(animateProgressBar);
     root.querySelectorAll("[data-provider-card] svg polyline").forEach(animateSparkline);
   }
 
