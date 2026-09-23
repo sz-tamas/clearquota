@@ -14,6 +14,17 @@
 
 @layer base {
   body { @apply min-h-screen bg-canvas font-sans text-ink antialiased; }
+  a[href] { cursor: pointer; transition: filter 150ms ease; }
+  a[href]:hover { filter: brightness(.9); }
+  button:not(:disabled) { cursor: pointer; transition: filter 150ms ease; }
+  button:not(:disabled):not([data-sidebar-backdrop]):hover { filter: brightness(.9); }
+}
+
+/* Use a neutral hover darker than the sidebar surface. */
+[data-sidebar] [data-sidebar-nav]:hover,
+[data-sidebar] [data-sidebar-settings]:hover {
+  background-color: var(--color-slate-200);
+  filter: none;
 }
 
 .auth-action-spinner { display: none; }
