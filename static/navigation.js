@@ -100,6 +100,20 @@ document.addEventListener("htmx:afterSwap", (event) => {
   pendingNavigation = null;
 });
 
+document.addEventListener("change", (event) => {
+  if (event.target.id !== "provider_type") return;
+  const form = event.target.closest("form");
+  form.querySelector("#display_name").value = event.target.selectedOptions[0].text;
+  form.querySelectorAll("[data-provider-config]").forEach((section) => {
+    const selected = section.dataset.providerConfig === event.target.value;
+    section.hidden = !selected;
+    section.querySelectorAll("input").forEach((input) => {
+      input.disabled = !selected;
+      input.required = selected;
+    });
+  });
+});
+
 window.addEventListener("popstate", () => {
   navigate(window.location.pathname + window.location.search + window.location.hash, false);
 });

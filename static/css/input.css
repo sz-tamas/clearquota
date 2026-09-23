@@ -58,6 +58,8 @@
   background: white;
 }
 
+[data-provider-config][hidden] { display: none; }
+
 /* Hide the legacy image-based header icon if one is rendered. */
 header div > div:last-child > button:first-child > img { display: none; }
 header div > div:last-child > button:first-child::after {

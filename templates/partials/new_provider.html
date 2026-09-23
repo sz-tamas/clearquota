@@ -7,8 +7,7 @@
         <label class="mb-1.5 block text-xs font-semibold text-slate-600"
                for="provider_type">Provider</label><select class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
         id="provider_type"
-        name="provider_type"
-        onchange="document.getElementById('display_name').value = this.options[this.selectedIndex].text">
+        name="provider_type">
             <option value="resend" {% if provider_type == "resend" %}selected{% endif %}>Resend</option>
             <option value="apify" {% if provider_type == "apify" %}selected{% endif %}>Apify</option>
             <option value="openai" {% if provider_type == "openai" %}selected{% endif %}>OpenAI</option>
@@ -32,13 +31,16 @@
        required
        placeholder="EXAMPLE_API_KEY"><small class="mt-1 block text-[11px] text-slate-500">Uses this connection’s Google project. The secret value is never stored.</small>
     </div>
-    <div id="resend-config">
+    <div id="resend-config"
+         data-provider-config="resend"
+         {% if provider_type != "resend" %}hidden{% endif %}>
         <div class="grid gap-4 sm:grid-cols-3">
             <div>
                 <label class="mb-1.5 block text-xs font-semibold text-slate-600" for="plan">Plan</label><input class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
        id="plan"
        name="plan"
-       placeholder="e.g. Pro">
+       placeholder="e.g. Pro"
+       {% if provider_type == "resend" %}required{% else %}disabled{% endif %}>
             </div>
             <div>
                 <label class="mb-1.5 block text-xs font-semibold text-slate-600"
@@ -48,7 +50,8 @@
        type="number"
        min="1"
        step="1"
-       placeholder="50000">
+       placeholder="50000"
+       {% if provider_type == "resend" %}required{% else %}disabled{% endif %}>
             </div>
             <div>
                 <label class="mb-1.5 block text-xs font-semibold text-slate-600"
@@ -58,12 +61,15 @@
        type="number"
        min="1"
        step="1"
-       placeholder="1000">
+       placeholder="1000"
+       {% if provider_type == "resend" %}required{% else %}disabled{% endif %}>
             </div>
         </div>
         <p class="mt-2 text-xs text-slate-500">Resend only: the plan is a label; monthly and daily quotas are used for calculations.</p>
     </div>
-    <div id="apify-config">
+    <div id="apify-config"
+         data-provider-config="apify"
+         {% if provider_type != "apify" %}hidden{% endif %}>
         <label class="mb-1.5 block text-xs font-semibold text-slate-600"
                for="apify_monthly_credit_allowance">Monthly credit allowance (USD)</label><input class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
        id="apify_monthly_credit_allowance"
@@ -71,13 +77,10 @@
        type="number"
        min="0.01"
        step="0.01"
-       placeholder="19">
+       placeholder="19"
+       {% if provider_type == "apify" %}required{% else %}disabled{% endif %}>
         <p class="mt-2 text-xs text-slate-500">Apify only: enter the plan’s included monthly credits, such as $19 for Starter.</p>
-    </div>
-    <div id="openai-config">
-        <p class="text-xs text-slate-500">After saving the provider, use its settings dialog to record dated credit purchases and adjustments.</p>
     </div>
     <button class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-dark"
             type="submit">Save provider</button>
 </form>
-<script>const providerType=document.getElementById('provider_type');const resendConfig=document.getElementById('resend-config');const apifyConfig=document.getElementById('apify-config');const openaiConfig=document.getElementById('openai-config');const resendInputs=resendConfig.querySelectorAll('input');const apifyInputs=apifyConfig.querySelectorAll('input');const toggleProviderConfig=()=>{const isResend=providerType.value==='resend';const isApify=providerType.value==='apify';const isOpenAi=providerType.value==='openai';resendConfig.hidden=!isResend;apifyConfig.hidden=!isApify;openaiConfig.hidden=!isOpenAi;resendInputs.forEach(input=>{input.disabled=!isResend;input.required=isResend});apifyInputs.forEach(input=>{input.disabled=!isApify;input.required=isApify})};providerType.addEventListener('change',toggleProviderConfig);toggleProviderConfig();</script>
