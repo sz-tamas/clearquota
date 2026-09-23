@@ -1,6 +1,6 @@
 #!/bin/sh
 # Install ClearQuota from the latest GitHub release.
-# This file is published as https://github.com/sz-tamas/clearquota/releases/latest/download/install.sh.
+# The public install URL is https://clearquota.app/install.
 
 set -eu
 
@@ -46,7 +46,7 @@ configure_shell_path() {
 	if ! grep -Fqx "$marker" "$profile" 2>/dev/null; then
 		printf '\n%s\n%s\n' "$marker" "$path_line" >> "$profile"
 	fi
-	printf 'Added clearquota to PATH in %s. Open a new terminal, then run clearquota.\n' "$profile"
+	printf 'Added clearquota to PATH in %s.\n' "$profile"
 }
 
 case "$(uname -s)" in
@@ -102,4 +102,4 @@ chmod 755 "${bin_dir}/clearquota"
 configure_shell_path
 
 printf 'ClearQuota installed to %s\n' "$install_dir"
-printf 'Run clearquota, then open http://127.0.0.1:3000\n'
+printf 'Run exec "$SHELL" to reload your shell, then run clearquota.\n'
