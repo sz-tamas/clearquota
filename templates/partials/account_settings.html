@@ -13,21 +13,23 @@
                 <i class="size-5" data-lucide="x" aria-hidden="true"></i>
             </button>
         </div>
-        <form class="mt-6"
+        <form class="settings-auth-form mt-6"
               hx-post="/account"
               hx-target="#app"
               hx-select="#app"
-              hx-swap="outerHTML">
+              hx-swap="outerHTML"
+              hx-disabled-elt="find button[type='submit']">
             <label class="mb-1.5 block text-sm font-semibold text-slate-700"
                    for="settings-project-id">Google Cloud project ID or number</label><input class="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm"
        id="settings-project-id"
        name="project_id"
        required
        value="{{ account.project_id }}">
-            <p class="mt-2 text-xs leading-5 text-slate-500">Only one identifier is needed. Use the project ID (for example, <code>amiagm</code>) or its numeric project number. Changing it requires Google authentication again.</p>
+            <p class="mt-2 text-xs leading-5 text-slate-500">Only one identifier is needed. Use the project ID or its numeric project number. Changing it requires Google authentication again.</p>
             <div class="mt-6 flex justify-end">
-                <button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white"
-                        type="submit">Save and reauthenticate</button>
+                <button class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors enabled:hover:bg-brand-dark disabled:cursor-wait disabled:opacity-70"
+                        type="submit"><span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+      aria-hidden="true"></span>Save and reauthenticate</button>
             </div>
         </form>
     </section>

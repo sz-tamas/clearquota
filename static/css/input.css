@@ -29,6 +29,7 @@
 
 .auth-action-spinner { display: none; }
 .auth-action.htmx-request .auth-action-spinner { display: inline-block; }
+.settings-auth-form.htmx-request .auth-action-spinner { display: inline-block; }
 
 /* Dialog layers must cover the desktop navigation as well as the page content. */
 #onboarding-layer,

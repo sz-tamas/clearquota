@@ -389,19 +389,27 @@ async fn update_account(
 	if account.project_id != input.project_id {
 		state.database.update_active_account(input)?;
 	}
+	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
+	launch_authentication(&state, &account).await?;
 	render_dashboard(&state)
 }
 
 async fn start_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
 	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
+	launch_authentication(&state, &account).await?;
+	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
+	Ok(Html(AuthRequiredTemplate { account }.render()?))
+}
+
+async fn launch_authentication(state: &AppState, account: &Account) -> Result<(), AppError> {
 	state.database.set_auth_status(&account.id, "authenticating", None, None)?;
+	let project_id = account.project_id.clone();
 	tokio::spawn(async move {
-		let _ = begin_authentication(&account.project_id).await;
+		let _ = begin_authentication(&project_id).await;
 	});
 	// Give the desktop browser launch a moment before replacing the launch button.
 	tokio::time::sleep(std::time::Duration::from_millis(700)).await;
-	let account = state.database.active_account()?.ok_or(AppError::BadRequest)?;
-	Ok(Html(AuthRequiredTemplate { account }.render()?))
+	Ok(())
 }
 
 async fn check_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
