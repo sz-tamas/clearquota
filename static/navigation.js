@@ -43,6 +43,28 @@ function renderDashboardRefreshConfirmation(button) {
 
 window.openDashboardRefreshConfirmation = renderDashboardRefreshConfirmation;
 
+function renderDashboardRefreshStatus(title, body, spinning) {
+  const dialog = document.querySelector("#provider-dialog");
+  if (!dialog) return;
+  dialog.innerHTML = `<div class="fixed inset-0 z-30 grid place-items-center bg-slate-950/35 p-4"><section class="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="refresh-dialog-title">${spinning ? '<span class="mx-auto grid size-14 place-items-center rounded-full bg-brand/10"><i class="size-7 animate-spin text-brand" data-lucide="loader-circle" aria-hidden="true"></i></span>' : ''}<p class="mt-5 text-xs font-bold tracking-[.15em] text-brand uppercase">Refreshing providers</p><h2 id="refresh-dialog-title" class="mt-1 text-xl font-bold text-ink">${title}</h2><p class="mt-3 text-sm leading-6 text-slate-600">${body}</p>${spinning ? '' : '<div class="mt-7"><button class="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white" onclick="document.getElementById(\'provider-dialog\').innerHTML=\'\'">Close</button></div>'}</section></div>`;
+  renderLucideIcons();
+}
+
+document.addEventListener("htmx:beforeRequest", (event) => {
+  if (event.detail.elt.matches("[data-refresh-submit]")) {
+    renderDashboardRefreshStatus("Refreshing…", "Fetching the selected month from your providers. This can take a moment.", true);
+  }
+});
+
+function showDashboardRefreshError(event) {
+  if (event.detail.elt.matches("[data-refresh-submit]")) {
+    renderDashboardRefreshStatus("Provider refresh failed", "We could not complete the refresh. Please try again.", false);
+  }
+}
+
+document.addEventListener("htmx:responseError", showDashboardRefreshError);
+document.addEventListener("htmx:sendError", showDashboardRefreshError);
+
 function navigate(path, pushHistory) {
   pendingNavigation = { path, pushHistory };
   window.htmx?.ajax("GET", path, {
