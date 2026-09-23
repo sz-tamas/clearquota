@@ -8,11 +8,19 @@
                for="provider_type">Provider</label><select class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
         id="provider_type"
         name="provider_type">
-            <option value="resend" {% if provider_type == "resend" %}selected{% endif %}>Resend</option>
             <option value="apify" {% if provider_type == "apify" %}selected{% endif %}>Apify</option>
             <option value="openai" {% if provider_type == "openai" %}selected{% endif %}>OpenAI</option>
-            <option value="neon" disabled>Neon (coming soon)</option>
+            <option value="resend" {% if provider_type == "resend" %}selected{% endif %}>Resend</option>
+            <option value="aws" disabled>AWS (coming soon)</option>
+            <option value="cloudflare" disabled>Cloudflare (coming soon)</option>
             <option value="upstash" disabled>Upstash (coming soon)</option>
+            <option value="neon" disabled>NeonDB (coming soon)</option>
+            <option value="supabase" disabled>Supabase (coming soon)</option>
+            <option value="postmark" disabled>Postmark (coming soon)</option>
+            <option value="claude" disabled>Claude (coming soon)</option>
+            <option value="gemini" disabled>Gemini (coming soon)</option>
+            <option value="github" disabled>GitHub (coming soon)</option>
+            <option value="gitlab" disabled>GitLab (coming soon)</option>
         </select>
     </div>
     <div>
