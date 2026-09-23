@@ -20,6 +20,8 @@ use crate::{
 	web::AppState,
 };
 
+const AUTH_CHECK_ERROR: &str = "Google credentials are not ready yet. Complete sign-in, then refresh access again.";
+
 pub fn router() -> Router<Arc<AppState>> {
 	Router::new()
 		.route("/", get(overview))
@@ -147,7 +149,7 @@ async fn overview(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Res
 }
 
 fn render_overview(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
-	let account = state.database.active_account()?;
+	let account = account_for_render(state)?;
 	let validate_authentication =
 		account.as_ref().is_some_and(|account| account.auth_status == "ready") && validate_authentication;
 	let summary = account
@@ -312,7 +314,7 @@ async fn providers_page(State(state): State<Arc<AppState>>, headers: HeaderMap) 
 }
 
 fn render_providers_page(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
-	let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
+	let account = account_for_render(state)?.ok_or(AppError::NotFound)?;
 	let providers = state.database.list_providers(&account.id)?;
 	Ok(Html(
 		ProvidersTemplate {
@@ -325,7 +327,7 @@ fn render_providers_page(state: &AppState, validate_authentication: bool) -> Res
 }
 
 fn render_run_logs(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
-	let account = state.database.active_account()?.ok_or(AppError::NotFound)?;
+	let account = account_for_render(state)?.ok_or(AppError::NotFound)?;
 	let logs = state.database.list_run_logs(&account.id)?;
 	Ok(Html(
 		RunLogsTemplate {
@@ -411,12 +413,10 @@ async fn check_auth(State(state): State<Arc<AppState>>) -> Result<Html<String>, 
 				.set_auth_status(&account.id, "ready", Some(&account.project_id), None)?;
 			state.database.set_onboarding_step(&account.id, 4)?;
 		}
-		Err(_) => state.database.set_auth_status(
-			&account.id,
-			"failed",
-			None,
-			Some("Google credentials are not ready yet. Complete sign-in, then refresh access again."),
-		)?,
+		Err(_) => {
+			state.database.set_auth_status(&account.id, "failed", None, None)?;
+			return render_dashboard_with_auth_error(&state, AUTH_CHECK_ERROR);
+		}
 	}
 	render_dashboard(&state)
 }
@@ -660,12 +660,30 @@ fn render_dashboard(state: &AppState) -> Result<Html<String>, AppError> {
 	render_dashboard_with_auth_validation(state, false, current_period())
 }
 
+fn render_dashboard_with_auth_error(state: &AppState, error: &str) -> Result<Html<String>, AppError> {
+	render_dashboard_page(state, false, current_period(), Some(error))
+}
+
 fn render_dashboard_with_auth_validation(
 	state: &AppState,
 	validate_authentication: bool,
 	period: UsagePeriod,
 ) -> Result<Html<String>, AppError> {
-	let account = state.database.active_account()?;
+	render_dashboard_page(state, validate_authentication, period, None)
+}
+
+fn render_dashboard_page(
+	state: &AppState,
+	validate_authentication: bool,
+	period: UsagePeriod,
+	auth_error: Option<&str>,
+) -> Result<Html<String>, AppError> {
+	let mut account = account_for_render(state)?;
+	if let Some(account) = account.as_mut() {
+		if let Some(error) = auth_error {
+			account.auth_error = Some(error.to_owned());
+		}
+	}
 	let show_dashboard_skeleton = account
 		.as_ref()
 		.is_some_and(|account| validate_authentication || account.auth_status != "ready");
@@ -689,6 +707,16 @@ fn render_dashboard_with_auth_validation(
 		}
 		.render()?,
 	))
+}
+
+fn account_for_render(state: &AppState) -> Result<Option<Account>, AppError> {
+	let mut account = state.database.active_account()?;
+	if let Some(account) = account.as_mut() {
+		if account.auth_error.as_deref() == Some(AUTH_CHECK_ERROR) {
+			account.auth_error = None;
+		}
+	}
+	Ok(account)
 }
 
 /// Setup progress is persisted, but usable ADC is checked each time the dashboard opens.

@@ -14,7 +14,7 @@
                         hx-target="#app"
                         hx-select="#app"
                         hx-swap="outerHTML"
-                        hx-disabled-elt="this">
+                        hx-disabled-elt="#auth-dialog button">
                     <span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
                           aria-hidden="true"></span>
                     I’ve completed sign-in — refresh access
@@ -23,7 +23,7 @@
                         hx-post="/onboarding/auth"
                         hx-target="#auth-dialog"
                         hx-swap="outerHTML"
-                        hx-disabled-elt="this">
+                        hx-disabled-elt="#auth-dialog button">
                     <span class="auth-action-spinner size-4 animate-spin rounded-full border-2 border-brand/40 border-t-brand"
                           aria-hidden="true"></span>
                     Try opening Google sign-in again
