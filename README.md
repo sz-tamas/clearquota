@@ -34,11 +34,12 @@ curl -fsSL https://github.com/sz-tamas/clearquota/releases/latest/download/insta
 ```
 
 The installer verifies the downloaded archive, installs the application under
-`~/.local/share/clearquota`, and creates `~/.local/bin/clearquota`. Run
-`~/.local/bin/clearquota` (or add `~/.local/bin` to `PATH`) to host the
-dashboard on `http://127.0.0.1:3000`. The server is deliberately local-only;
-it is not exposed to your network. Set `USAGE_DASH_PORT` before starting it to
-use another local port. The installer requires the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+`~/.local/share/clearquota`, creates `~/.local/bin/clearquota`, and adds that
+directory to the startup configuration for zsh, bash, or fish. Open a new
+terminal, then run `clearquota` to host the dashboard on `http://127.0.0.1:3000`.
+The server is deliberately local-only; it is not exposed to your network. Set
+`USAGE_DASH_PORT` before starting it to use another local port. The installer
+requires the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
 (`gcloud`) and stops with installation instructions when it is unavailable. You
 also need IAM access to the Secret Manager secrets you intend to use; ClearQuota
 guides you through Google authentication on first run.

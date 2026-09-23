@@ -15,6 +15,40 @@ fail() {
 	exit 1
 }
 
+configure_shell_path() {
+	marker="# Added by ClearQuota installer"
+	shell_name="$(basename "${SHELL:-}")"
+
+	case "$shell_name" in
+		zsh)
+			profile="$HOME/.zshrc"
+			path_line="export PATH=\"$bin_dir:\$PATH\""
+			;;
+		bash)
+			if [ "$(uname -s)" = "Darwin" ]; then
+				profile="$HOME/.bash_profile"
+			else
+				profile="$HOME/.bashrc"
+			fi
+			path_line="export PATH=\"$bin_dir:\$PATH\""
+			;;
+		fish)
+			profile="$HOME/.config/fish/config.fish"
+			path_line="fish_add_path -m \"$bin_dir\""
+			;;
+		*)
+			printf 'Could not identify your shell; add %s to PATH to run clearquota directly.\n' "$bin_dir"
+			return
+			;;
+	esac
+
+	mkdir -p "$(dirname "$profile")"
+	if ! grep -Fqx "$marker" "$profile" 2>/dev/null; then
+		printf '\n%s\n%s\n' "$marker" "$path_line" >> "$profile"
+	fi
+	printf 'Added clearquota to PATH in %s. Open a new terminal, then run clearquota.\n' "$profile"
+}
+
 case "$(uname -s)" in
 	Linux) platform="linux" ;;
 	Darwin) platform="macos" ;;
@@ -65,9 +99,7 @@ exec "${install_dir}/clearquota" "\$@"
 EOF
 chmod 755 "${bin_dir}/clearquota"
 
+configure_shell_path
+
 printf 'ClearQuota installed to %s\n' "$install_dir"
-printf 'Run %s/clearquota, then open http://127.0.0.1:3000\n' "$bin_dir"
-case ":$PATH:" in
-	*":${bin_dir}:"*) ;;
-	*) printf 'Add %s to your PATH to run clearquota directly.\n' "$bin_dir" ;;
-esac
+printf 'Run clearquota, then open http://127.0.0.1:3000\n'
