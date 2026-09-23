@@ -52,6 +52,12 @@ depends = ["lint"]
 run = "mise run css:build && cargo run"
 
 [tasks.dev]
-description = "Build CSS, then watch Rust changes and restart the dashboard with Bacon"
+description = "Watch Rust and templates with Bacon, and rebuild CSS on changes"
 depends = ["lint"]
-run = "mise run css:build && bacon run"
+run = '''
+mise run css:build
+.tools/tailwindcss -i static/css/input.css -o static/css/output.css --minify --watch &
+css_pid=$!
+trap 'kill "$css_pid" 2>/dev/null || true' EXIT INT TERM
+bacon run
+'''
