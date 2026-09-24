@@ -10,6 +10,7 @@ Use this when adding a usage source. OpenAI, Apify, and Resend are the currently
 4. Return concise, credential-free errors. Logs may include the endpoint path, HTTP status, and normalized outcome, but never a request body, response body, key, token, or authorization detail.
 5. If one independent request succeeds and another fails, preserve the sanitized partial result when it remains meaningful to the dashboard; mark the snapshot partial rather than discarding it.
 6. Register the adapter in `ProviderRegistry`, validate any provider-specific configuration in `src/router/providers.rs`, and add focused fixture-based tests containing no real secrets. Put new route DTOs in `src/dtos/providers.rs` and reusable validation in `src/utils/helper.rs`.
+7. Update the provider's guide in `docs/guides/` with its required key permissions, setup steps, and displayed metrics; update getting-started and reference pages if the new integration changes them. See `docs/MAINTENANCE.md`.
 
 ### Existing collector conventions
 

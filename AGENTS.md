@@ -43,6 +43,7 @@ For future providers, do not advertise them as supported until their adapter, va
 - Use `mise run start` for local development and `mise run check` before handing off changes.
 - Run `mise run test` for code changes. The GitHub Actions workflow runs `mise run check`, `mise run test`, `cargo clippy --locked -- -D warnings`, and `cargo audit` on pull requests and pushes to `main`.
 - When templates change, rebuild `static/css/output.css` with `mise run css:build`.
+- When a change adds or substantially changes a user-facing feature, provider, setup step, or configuration, update the relevant `docs/` pages in the same change. Use `docs/MAINTENANCE.md` to find them; routine fixes that do not change documented behavior need no docs refresh.
 - Do not commit `data/`, `.tools/`, Tailwind output, environment files, secret material, or private planning documents.
 - Keep new dependencies narrow and justified. Prefer standard library facilities when they fit.
 - Errors shown to users should identify the provider/action, but must never include credentials, authorization headers, Secret Manager output, or full provider response bodies.

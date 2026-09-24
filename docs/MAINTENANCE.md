@@ -1,6 +1,6 @@
 # Maintaining the ClearQuota documentation
 
-Review documentation in the same pull request as every application change. Update affected pages in place; preserve unrelated content, filenames, and links unless a structural change is necessary. The code, tests, templates, migrations, and build configuration are the source of truth. Do not regenerate the whole directory from an old outline.
+When a pull request adds or substantially changes a user-facing feature, provider, setup step, configuration option, or operational behavior, review and update the affected documentation in that same pull request. Routine fixes that leave documented behavior unchanged need no documentation edit. Update affected pages in place; preserve unrelated content, filenames, and links unless a structural change is necessary. The code, tests, templates, migrations, and build configuration are the source of truth. Do not regenerate the whole directory from an old outline.
 
 ## Impact checklist
 

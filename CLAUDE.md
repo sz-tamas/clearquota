@@ -45,3 +45,5 @@ Use the same collection path for manual refresh and future scheduling. Implement
 Neon and Upstash are not implemented collectors. Do not present a provider as functional until the adapter and UI are complete.
 
 Before completing a change, run `mise run check` and `mise run test`; run `mise run css:build` whenever templates or Tailwind source changes. CI runs `mise run check`, `mise run test`, `cargo clippy --locked -- -D warnings`, and `cargo audit`.
+
+For a new or substantially changed user-facing feature, provider, setup step, or configuration, update the relevant `docs/` pages alongside the implementation. `docs/MAINTENANCE.md` maps source areas to pages. Routine fixes without a change in documented behavior do not need a docs refresh.
