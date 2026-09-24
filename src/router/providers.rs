@@ -30,6 +30,7 @@ pub fn router() -> Router<Arc<AppState>> {
 		.route("/new", get(new_provider_form))
 		.route("/{id}/edit", get(edit_provider))
 		.route("/{id}", post(update_provider))
+		.route("/{id}/settings", post(update_provider_settings))
 		.route("/{id}/credit-events", post(add_openai_credit_event))
 		.route(
 			"/{id}/credit-events/{event_id}/delete",
@@ -48,7 +49,28 @@ pub(super) async fn providers_page(
 
 pub(super) fn render_providers_page(state: &AppState, validate_authentication: bool) -> Result<Html<String>, AppError> {
 	let account = dashboard::account_for_render(state)?.ok_or(AppError::NotFound)?;
-	let providers = state.database.list_providers(&account.id)?;
+	let providers = state
+		.database
+		.list_providers(&account.id)?
+		.into_iter()
+		.map(|provider| {
+			let ledger_html = if provider.provider_type == "openai" {
+				render_openai_credit_ledger(state, provider.clone())?
+			} else {
+				String::new()
+			};
+			let settings_html = if matches!(provider.provider_type.as_str(), "apify" | "resend") {
+				render_provider_settings(provider.clone())?
+			} else {
+				String::new()
+			};
+			Ok(ProviderRow {
+				provider,
+				ledger_html,
+				settings_html,
+			})
+		})
+		.collect::<Result<Vec<_>, AppError>>()?;
 	Ok(Html(
 		ProvidersTemplate {
 			validate_authentication: account.auth_status == "ready" && validate_authentication,
@@ -130,14 +152,7 @@ pub(super) async fn edit_provider(
 	State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
 	let provider = provider_for_active_account(&state, &id)?;
-	let credit_events = state.database.list_openai_credit_events(&provider.id)?;
-	Ok(Html(
-		EditProviderTemplate {
-			provider,
-			credit_events,
-		}
-		.render()?,
-	))
+	Ok(Html(EditProviderTemplate { provider }.render()?))
 }
 
 pub(super) async fn update_provider(
@@ -152,28 +167,59 @@ pub(super) async fn update_provider(
 	if !valid_secret_name(input.secret_ref.trim()) {
 		return Err(AppError::BadRequest);
 	}
-	if provider.provider_type == "resend" {
-		if input.plan.as_deref().is_none_or(str::is_empty)
-			|| input.monthly_quota.unwrap_or(0) <= 0
-			|| input.daily_quota.unwrap_or(0) <= 0
-		{
-			return Err(AppError::BadRequest);
-		}
-	} else if provider.provider_type == "apify" {
-		if !valid_credit_allowance(input.apify_monthly_credit_allowance) {
-			return Err(AppError::BadRequest);
-		}
-		input.plan = Some(provider.plan.clone());
-		input.monthly_quota = Some(provider.monthly_quota);
-		input.daily_quota = Some(provider.daily_quota);
-	} else {
-		input.plan = Some(provider.plan.clone());
-		input.monthly_quota = Some(provider.monthly_quota);
-		input.daily_quota = Some(provider.daily_quota);
-		input.apify_monthly_credit_allowance = Some(provider.apify_monthly_credit_allowance);
-	}
+	input.plan = Some(provider.plan.clone());
+	input.monthly_quota = Some(provider.monthly_quota);
+	input.daily_quota = Some(provider.daily_quota);
+	input.apify_monthly_credit_allowance = Some(provider.apify_monthly_credit_allowance);
 	state.database.update_provider(&provider.id, &provider.account_id, input)?;
 	render_providers_page(&state, false)
+}
+
+pub(super) async fn update_provider_settings(
+	Path(id): Path<String>,
+	State(state): State<Arc<AppState>>,
+	Form(input): Form<ProviderSettingsInput>,
+) -> Result<Html<String>, AppError> {
+	let provider = provider_for_active_account(&state, &id)?;
+	let (plan, monthly_quota, daily_quota, apify_monthly_credit_allowance) = match provider.provider_type.as_str() {
+		"apify" if valid_credit_allowance(input.apify_monthly_credit_allowance) => (
+			provider.plan.clone(),
+			provider.monthly_quota,
+			provider.daily_quota,
+			input.apify_monthly_credit_allowance.unwrap_or_default(),
+		),
+		"resend"
+			if input.plan.as_deref().is_some_and(|plan| !plan.trim().is_empty())
+				&& input.monthly_quota.is_some_and(|quota| quota > 0)
+				&& input.daily_quota.is_some_and(|quota| quota > 0) =>
+		{
+			(
+				input.plan.unwrap_or_default().trim().to_owned(),
+				input.monthly_quota.unwrap_or_default(),
+				input.daily_quota.unwrap_or_default(),
+				provider.apify_monthly_credit_allowance,
+			)
+		}
+		_ => return Err(AppError::BadRequest),
+	};
+	state.database.update_provider(
+		&provider.id,
+		&provider.account_id,
+		UpdateProvider {
+			display_name: provider.display_name.clone(),
+			secret_ref: provider.secret_ref.clone(),
+			plan: Some(plan),
+			monthly_quota: Some(monthly_quota),
+			daily_quota: Some(daily_quota),
+			apify_monthly_credit_allowance: Some(apify_monthly_credit_allowance),
+		},
+	)?;
+	let updated = provider_for_active_account(&state, &id)?;
+	Ok(Html(render_provider_settings(updated)?))
+}
+
+fn render_provider_settings(provider: ProviderConfig) -> Result<String, AppError> {
+	Ok(ProviderSettingsTemplate { provider }.render()?)
 }
 
 pub(super) async fn add_openai_credit_event(
@@ -202,7 +248,7 @@ pub(super) async fn add_openai_credit_event(
 		input.amount,
 		input.note.as_deref().unwrap_or("").trim(),
 	)?;
-	edit_provider(Path(id), State(state)).await
+	Ok(Html(render_openai_credit_ledger(&state, provider)?))
 }
 
 pub(super) async fn delete_openai_credit_event(
@@ -214,7 +260,16 @@ pub(super) async fn delete_openai_credit_event(
 		return Err(AppError::BadRequest);
 	}
 	state.database.delete_openai_credit_event(&provider.id, event_id)?;
-	edit_provider(Path(id), State(state)).await
+	Ok(Html(render_openai_credit_ledger(&state, provider)?))
+}
+
+fn render_openai_credit_ledger(state: &AppState, provider: ProviderConfig) -> Result<String, AppError> {
+	let credit_events = state.database.list_openai_credit_events(&provider.id)?;
+	Ok(OpenAiCreditLedgerTemplate {
+		provider,
+		credit_events,
+	}
+	.render()?)
 }
 
 pub(super) async fn delete_confirmation(

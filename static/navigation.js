@@ -118,6 +118,15 @@ function navigate(path, pushHistory) {
 }
 
 document.addEventListener("click", (event) => {
+  const providerRow = event.target.closest("[data-provider-row]");
+  if (providerRow && !event.target.closest("button:not([data-provider-row-toggle]), a")) {
+    const toggle = providerRow.querySelector("[data-provider-row-toggle]");
+    const details = document.getElementById(toggle.getAttribute("aria-controls"));
+    const open = toggle.getAttribute("aria-expanded") !== "true";
+    toggle.setAttribute("aria-expanded", String(open));
+    details.hidden = !open;
+  }
+
   const sidebarToggle = event.target.closest("[data-sidebar-toggle]");
   if (sidebarToggle) {
     setSidebarOpen(sidebarToggle.getAttribute("aria-expanded") !== "true");

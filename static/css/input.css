@@ -18,6 +18,7 @@
   a[href]:hover { filter: brightness(.9); }
   button:not(:disabled) { cursor: pointer; transition: filter 150ms ease; }
   button:not(:disabled):not([data-sidebar-backdrop]):hover { filter: brightness(.9); }
+  button:not(:disabled)[data-provider-row-toggle]:hover { filter: none; }
 }
 
 /* Use a neutral hover darker than the sidebar surface. */

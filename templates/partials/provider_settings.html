@@ -1,0 +1,56 @@
+<section class="rounded-xl border border-slate-200 bg-white p-4">
+    <form hx-post="/providers/{{ provider.id }}/settings"
+          hx-target="#provider-settings-{{ provider.id }}"
+          hx-swap="innerHTML">
+        {% if provider.provider_type == "apify" %}
+            <label class="block max-w-sm text-sm font-semibold text-slate-700"
+                   for="allowance-{{ provider.id }}">Monthly credit allowance (USD)</label>
+            <input class="mt-2 w-full max-w-sm rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                   id="allowance-{{ provider.id }}"
+                   name="apify_monthly_credit_allowance"
+                   type="number"
+                   min="0.01"
+                   step="0.01"
+                   required
+                   value="{{ provider.apify_monthly_credit_allowance }}">
+            <p class="mt-2 text-xs text-slate-500">Your plan’s included monthly credits, used to calculate remaining credit and percentage used.</p>
+        {% else if provider.provider_type == "resend" %}
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                    <label class="mb-1.5 block text-sm font-semibold text-slate-700"
+                           for="plan-{{ provider.id }}">Plan</label>
+                    <input class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                           id="plan-{{ provider.id }}"
+                           name="plan"
+                           required
+                           value="{{ provider.plan }}">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-semibold text-slate-700"
+                           for="monthly-quota-{{ provider.id }}">Monthly quota</label>
+                    <input class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                           id="monthly-quota-{{ provider.id }}"
+                           name="monthly_quota"
+                           type="number"
+                           min="1"
+                           required
+                           value="{{ provider.monthly_quota }}">
+                </div>
+                <div>
+                    <label class="mb-1.5 block text-sm font-semibold text-slate-700"
+                           for="daily-quota-{{ provider.id }}">Daily quota</label>
+                    <input class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                           id="daily-quota-{{ provider.id }}"
+                           name="daily_quota"
+                           type="number"
+                           min="1"
+                           required
+                           value="{{ provider.daily_quota }}">
+                </div>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Quotas calculate monthly and daily sent + received usage.</p>
+        {% endif %}
+        <button class="mt-4 rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white"
+                type="submit">Save settings</button>
+    </form>
+</section>

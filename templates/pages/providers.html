@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="/static/css/output.css">
         <script src="https://unpkg.com/lucide@latest"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="/static/navigation.js?v=4"></script>
+        <script src="/static/navigation.js?v=5"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
         <script defer src="/static/dashboard-motion.js?v=2"></script>
     </head>
@@ -64,7 +64,7 @@
                         aria-label="Open navigation">
                     <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
                 </button>
-                <main class="mx-auto max-w-6xl px-5 py-10">
+                <main class="mx-auto flex h-dvh max-w-6xl flex-col px-5 py-10">
                     <div class="mt-2 flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h1 class="text-4xl font-bold tracking-tight">Providers</h1>
@@ -210,8 +210,8 @@
                             </div>
                         </div>
                     </div>
-                    <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <div class="max-h-[calc(100dvh-14rem)] overflow-auto">
+                    <section class="mt-8 min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <div class="h-full overflow-auto">
                             <table class="w-full min-w-[680px] text-left text-sm">
                                 <thead class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-[.08em] text-slate-500 uppercase">
                                     <tr>
@@ -222,21 +222,28 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    {% for provider in providers %}
-                                        <tr>
+                                    {% for row in providers %}
+                                        <tr class="cursor-pointer hover:bg-slate-50" data-provider-row>
                                             <td class="px-5 py-4 font-semibold text-ink">
-                                                <div class="flex items-center gap-3">
+                                                <button class="group flex w-full items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                                                        type="button"
+                                                        data-provider-row-toggle
+                                                        aria-expanded="false"
+                                                        aria-controls="provider-details-{{ row.provider.id }}">
+                                                    <i class="size-6 shrink-0 text-slate-400 transition-transform group-aria-expanded:rotate-180"
+                                                       data-lucide="chevron-down"
+                                                       aria-hidden="true"></i>
                                                     <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100"
                                                           aria-hidden="true">
-                                                        {% if provider.provider_type == "apify" %}
+                                                        {% if row.provider.provider_type == "apify" %}
                                                             <img class="size-7"
                                                                  src="/static/images/providers/apify.svg"
                                                                  alt="">
-                                                        {% else if provider.provider_type == "openai" %}
+                                                        {% else if row.provider.provider_type == "openai" %}
                                                             <img class="size-7"
                                                                  src="/static/images/providers/openai.svg"
                                                                  alt="">
-                                                        {% else if provider.provider_type == "resend" %}
+                                                        {% else if row.provider.provider_type == "resend" %}
                                                             <img class="size-7"
                                                                  src="/static/images/providers/resend.svg"
                                                                  alt="">
@@ -244,17 +251,30 @@
                                                             <i class="size-6 text-slate-500" data-lucide="blocks"></i>
                                                         {% endif %}
                                                     </span>
-                                                    <span>{{ provider.display_name }}</span>
-                                                </div>
+                                                    <span>{{ row.provider.display_name }}</span>
+                                                </button>
                                             </td>
-                                            <td class="px-5 py-4 capitalize text-slate-600">{{ provider.provider_type }}</td>
-                                            <td class="px-5 py-4 font-mono text-xs text-slate-500">{{ provider.secret_ref }}</td>
+                                            <td class="px-5 py-4 capitalize text-slate-600">{{ row.provider.provider_type }}</td>
+                                            <td class="px-5 py-4 font-mono text-xs text-slate-500">{{ row.provider.secret_ref }}</td>
                                             <td class="px-5 py-4 text-right">
                                                 <button class="inline-flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-brand hover:bg-violet-50"
-                                                        aria-label="Edit {{ provider.display_name }}"
-                                                        hx-get="/providers/{{ provider.id }}/edit"
+                                                        aria-label="Edit {{ row.provider.display_name }}"
+                                                        hx-get="/providers/{{ row.provider.id }}/edit"
                                                         hx-target="#provider-dialog"
                                                         hx-swap="innerHTML"><i class="size-4" data-lucide="pencil" aria-hidden="true"></i>Edit</button>
+                                            </td>
+                                        </tr>
+                                        <tr id="provider-details-{{ row.provider.id }}"
+                                            class="bg-slate-50"
+                                            hidden>
+                                            <td colspan="4" class="px-5 py-5 text-sm leading-6 text-slate-600">
+                                                {% if row.provider.provider_type == "openai" %}
+                                                    <div id="provider-ledger-{{ row.provider.id }}">{{ row.ledger_html|safe }}</div>
+                                                {% else if row.provider.provider_type == "apify" || row.provider.provider_type == "resend" %}
+                                                    <div id="provider-settings-{{ row.provider.id }}">{{ row.settings_html|safe }}</div>
+                                                {% else %}
+                                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                                {% endif %}
                                             </td>
                                         </tr>
                                     {% else %}
