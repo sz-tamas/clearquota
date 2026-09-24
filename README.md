@@ -1,3 +1,5 @@
+# ClearQuota
+
 [![Visit clearquota.app](cq_banner_lg.png)](https://clearquota.app)
 
 [![CI](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sz-tamas/clearquota/actions/workflows/ci.yml)
@@ -25,9 +27,9 @@ Supported providers: **OpenAI, Apify, and Resend**.
 
 ## Getting started
 
-### Install a release
+### Install a published release
 
-Install the latest release on macOS (Apple Silicon or Intel) or Linux (x86_64 or ARM64):
+Published releases are available from [GitHub Releases](https://github.com/sz-tamas/clearquota/releases). The website's `/install` route downloads the installer attached to the latest release. Install on macOS (Apple Silicon or Intel) or Linux (x86_64 or ARM64):
 
 ```bash
 curl -fsSL https://clearquota.app/install | sh && exec "$SHELL"
@@ -45,9 +47,9 @@ requires the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
 also need IAM access to the Secret Manager secrets you intend to use; ClearQuota
 guides you through Google authentication on first run.
 
-### Build from source
+### Run from source
 
-Prerequisites: [mise](https://mise.jdx.dev/), the [Google Cloud CLI](https://cloud.google.com/sdk), and IAM access to the Secret Manager secrets you intend to use.
+Use this path to run the current checkout, including changes that have not been published in a release. Source setup currently supports macOS. Prerequisites: [mise](https://mise.jdx.dev/), the [Google Cloud CLI](https://cloud.google.com/sdk), and IAM access to the Secret Manager secrets you intend to use.
 
 ```bash
 mise run install
