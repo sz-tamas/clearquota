@@ -19,6 +19,12 @@ pub struct AppState {
 
 pub fn router() -> Router<Arc<AppState>> {
 	Router::new()
+		.route("/settings", axum::routing::get(account::settings_page))
+		.route(
+			"/settings/clear/{category}",
+			axum::routing::post(account::clear_local_data),
+		)
+		.route("/settings/erase", axum::routing::post(account::erase_local_data))
 		.merge(dashboard::router())
 		.nest("/providers", providers::router())
 		.nest("/runlogs", runlogs::router())

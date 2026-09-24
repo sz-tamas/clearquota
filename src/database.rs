@@ -14,6 +14,61 @@ pub struct Database {
 }
 
 impl Database {
+	pub fn storage_path(&self) -> std::path::PathBuf {
+		if self.path.is_absolute() {
+			self.path.clone()
+		} else {
+			std::env::current_dir().unwrap_or_default().join(&self.path)
+		}
+	}
+
+	pub fn storage_size(&self) -> u64 {
+		let path = self.storage_path();
+		let sidecar = |suffix: &str| {
+			let mut name = path.as_os_str().to_os_string();
+			name.push(suffix);
+			std::path::PathBuf::from(name)
+		};
+		[path.clone(), sidecar("-wal"), sidecar("-shm")]
+			.into_iter()
+			.filter_map(|path| fs::metadata(path).ok().map(|metadata| metadata.len()))
+			.sum()
+	}
+
+	pub fn local_data_counts(&self) -> Result<(i64, i64), rusqlite::Error> {
+		self.connection()?.query_row(
+			"SELECT (SELECT COUNT(*) FROM usage_snapshots), (SELECT COUNT(*) FROM run_logs)",
+			[],
+			|row| Ok((row.get(0)?, row.get(1)?)),
+		)
+	}
+
+	pub fn clear_usage_history(&self) -> Result<(), rusqlite::Error> {
+		let mut connection = self.connection()?;
+		let transaction = connection.transaction()?;
+		for table in [
+			"usage_snapshots",
+			"monthly_usage_snapshots",
+			"openai_cost_ledger_entries",
+			"openai_usage_ledger_entries",
+		] {
+			transaction.execute(&format!("DELETE FROM {table}"), [])?;
+		}
+		transaction.commit()
+	}
+
+	pub fn clear_refresh_logs(&self) -> Result<(), rusqlite::Error> {
+		self.connection()?.execute("DELETE FROM run_logs", [])?;
+		Ok(())
+	}
+
+	pub fn erase_all_local_data(&self) -> Result<(), rusqlite::Error> {
+		let mut connection = self.connection()?;
+		let transaction = connection.transaction()?;
+		transaction.execute("DELETE FROM providers", [])?;
+		transaction.execute("DELETE FROM accounts", [])?;
+		transaction.commit()
+	}
 	pub fn open(path: &Path) -> Result<Self, rusqlite::Error> {
 		if let Some(parent) = path.parent() {
 			fs::create_dir_all(parent).map_err(|_| rusqlite::Error::InvalidPath(path.to_path_buf()))?;
@@ -156,6 +211,24 @@ impl Database {
 
 	pub fn active_account(&self) -> Result<Option<Account>, rusqlite::Error> {
 		self.connection()?.query_row("SELECT id, project_id, project_name, auth_status, auth_error FROM accounts WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1", [], |row| Ok(Account { id: row.get(0)?, project_id: row.get(1)?, project_name: row.get(2)?, auth_status: row.get(3)?, auth_error: row.get(4)? })).optional()
+	}
+
+	pub fn list_accounts(&self) -> Result<Vec<Account>, rusqlite::Error> {
+		let connection = self.connection()?;
+		let mut statement = connection.prepare(
+			"SELECT id, project_id, project_name, auth_status, auth_error FROM accounts ORDER BY created_at DESC",
+		)?;
+		statement
+			.query_map([], |row| {
+				Ok(Account {
+					id: row.get(0)?,
+					project_id: row.get(1)?,
+					project_name: row.get(2)?,
+					auth_status: row.get(3)?,
+					auth_error: row.get(4)?,
+				})
+			})?
+			.collect()
 	}
 
 	pub fn create_account(&self, input: NewAccount) -> Result<Account, rusqlite::Error> {
@@ -488,11 +561,16 @@ mod tests {
 	use crate::models::{NewProvider, OpenAiCostLedgerEntry, OpenAiUsageLedgerEntry, UsageSnapshot};
 
 	fn test_database() -> (Database, std::path::PathBuf, String) {
+		static NEXT_TEST_DATABASE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 		let unique = std::time::SystemTime::now()
 			.duration_since(std::time::UNIX_EPOCH)
 			.unwrap_or_default()
 			.as_nanos();
-		let path = std::env::temp_dir().join(format!("clearquota-database-{unique}.sqlite"));
+		let sequence = NEXT_TEST_DATABASE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+		let path = std::env::temp_dir().join(format!(
+			"clearquota-database-{}-{unique}-{sequence}.sqlite",
+			std::process::id()
+		));
 		let database = Database::open(&path).unwrap();
 		database.migrate().unwrap();
 		let account = database
@@ -516,6 +594,41 @@ mod tests {
 			.unwrap();
 		let provider_id = database.list_providers(&account.id).unwrap()[0].id.clone();
 		(database, path, provider_id)
+	}
+
+	#[test]
+	fn local_data_controls_keep_and_remove_the_expected_records() {
+		let (database, path, provider_id) = test_database();
+		database.save_run_log(&provider_id, "succeeded", "Refresh completed.").unwrap();
+		database
+			.save_snapshot(&UsageSnapshot {
+				provider_id: provider_id.clone(),
+				timestamp: "200".to_owned(),
+				status: "ok".to_owned(),
+				cost: Some(1.0),
+				currency: Some("usd".to_owned()),
+				metrics: vec![],
+				period: crate::models::UsagePeriod {
+					start: 100,
+					end: 201,
+					is_current: false,
+				},
+				is_partial: false,
+				metadata: serde_json::json!({}),
+				openai_cost_ledger: None,
+				openai_usage_ledger: None,
+			})
+			.unwrap();
+		assert_eq!(database.local_data_counts().unwrap(), (1, 1));
+		database.clear_usage_history().unwrap();
+		assert_eq!(database.local_data_counts().unwrap(), (0, 1));
+		assert!(database.find_provider(&provider_id).unwrap().is_some());
+		database.clear_refresh_logs().unwrap();
+		assert_eq!(database.local_data_counts().unwrap(), (0, 0));
+		database.erase_all_local_data().unwrap();
+		assert!(database.active_account().unwrap().is_none());
+		assert!(database.find_provider(&provider_id).unwrap().is_none());
+		std::fs::remove_file(path).ok();
 	}
 
 	#[test]

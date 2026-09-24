@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="/static/css/output.css">
         <script src="https://unpkg.com/lucide@latest"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="/static/navigation.js?v=3"></script>
+        <script src="/static/navigation.js?v=4"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
         <script defer src="/static/dashboard-motion.js?v=2"></script>
     </head>
@@ -50,12 +50,9 @@
                     <a data-sidebar-nav
                        class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
                        href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a>
-                    {% match account %}{% when Some with (account) %}<button data-sidebar-settings
-        hx-get="/account/settings"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"
-        class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
-        type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
+                    {% match account %}{% when Some with (account) %}<a data-sidebar-nav
+   href="/settings"
+   class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</a><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
       aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}
             </div>
         </aside>
@@ -69,7 +66,6 @@
                 <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
             </button>
             <main class="mx-auto max-w-6xl px-5 py-10">
-                <p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p>
                 <h1 class="mt-2 text-4xl font-bold tracking-tight text-ink">Overview</h1>
                 {% match summary %}
                 {% when Some with (summary) %}
@@ -169,6 +165,5 @@
 {% endif %}
 {% when None %}{% endmatch %}
 </div>
-<script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
 </body>
 </html>

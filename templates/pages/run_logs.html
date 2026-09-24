@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="/static/css/output.css">
         <script src="https://unpkg.com/lucide@latest"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="/static/navigation.js?v=3"></script>
+        <script src="/static/navigation.js?v=4"></script>
     </head>
     <body>
         <div id="app" class="min-h-screen min-[800px]:flex">
@@ -47,12 +47,9 @@
                     <a data-sidebar-nav
                        class="flex items-center gap-3 rounded-lg bg-violet-50 px-3 py-2.5 text-sm font-medium text-brand"
                        href="/runlogs"
-                       aria-current="page"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a><button data-sidebar-settings
-        hx-get="/account/settings"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"
-        class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
-        type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button>
+                       aria-current="page"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a><a data-sidebar-nav
+   href="/settings"
+   class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</a>
                     <div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>
                 </div>
             </aside>
@@ -65,7 +62,7 @@
                         aria-label="Open navigation">
                     <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
                 </button>
-                <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Activity</p><h1 class="mt-2 text-4xl font-bold tracking-tight">Run logs</h1><p class="mt-2 text-sm text-slate-500">A sanitized record of each provider refresh attempt.</p><section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-[.08em] text-slate-500 uppercase"><tr><th class="px-5 py-3">Time</th><th class="px-5 py-3">Provider</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Details</th></tr></thead><tbody class="divide-y divide-slate-100">{% for log in logs %}<tr><td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ log.created_at }}</td><td class="px-5 py-4"><p class="font-semibold text-ink">{{ log.provider_name }}</p><p class="mt-0.5 text-xs text-slate-500">{{ log.provider_type }}</p></td><td class="px-5 py-4">{% if log.status == "succeeded" %}<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Succeeded</span>{% else %}<span class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Failed</span>{% endif %}</td><td class="max-w-md px-5 py-4 leading-5 text-slate-600">{{ log.message }}</td></tr>{% else %}<tr><td colspan="4" class="px-5 py-12 text-center text-slate-500">No provider refreshes have been run yet.</td></tr>{% endfor %}</tbody></table></div></section></main></div>
+                <main class="mx-auto max-w-6xl px-5 py-10"><h1 class="mt-2 text-4xl font-bold tracking-tight">Run logs</h1><p class="mt-2 text-sm text-slate-500">A sanitized record of each provider refresh attempt.</p><section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"><div class="overflow-x-auto"><table class="w-full min-w-[680px] text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-[.08em] text-slate-500 uppercase"><tr><th class="px-5 py-3">Time</th><th class="px-5 py-3">Provider</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Details</th></tr></thead><tbody class="divide-y divide-slate-100">{% for log in logs %}<tr><td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ log.created_at }}</td><td class="px-5 py-4"><p class="font-semibold text-ink">{{ log.provider_name }}</p><p class="mt-0.5 text-xs text-slate-500">{{ log.provider_type }}</p></td><td class="px-5 py-4">{% if log.status == "succeeded" %}<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Succeeded</span>{% else %}<span class="rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">Failed</span>{% endif %}</td><td class="max-w-md px-5 py-4 leading-5 text-slate-600">{{ log.message }}</td></tr>{% else %}<tr><td colspan="4" class="px-5 py-12 text-center text-slate-500">No provider refreshes have been run yet.</td></tr>{% endfor %}</tbody></table></div></section></main></div>
             {% if validate_authentication %}
                 {% include "partials/auth_validating.html" %}
             {% else if account.auth_status != "ready" %}
@@ -75,6 +72,5 @@
         </div>
         <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
         <script src="/static/dashboard-motion.js?v=2"></script>
-        <script>const renderLucideIcons=()=>window.lucide?.createIcons({attrs:{'stroke-width':1.75}});renderLucideIcons();const isMobileSidebar=()=>window.innerWidth<800;const setSidebarOpen=(open)=>{const sidebar=document.querySelector('[data-sidebar]');const backdrop=document.querySelector('[data-sidebar-backdrop]');const toggle=document.querySelector('[data-sidebar-toggle]');if(!sidebar||!backdrop||!toggle)return;const showDrawer=open&&isMobileSidebar();sidebar.classList.toggle('-translate-x-full',!showDrawer);sidebar.toggleAttribute('inert',isMobileSidebar()&&!showDrawer);sidebar.setAttribute('aria-hidden',String(isMobileSidebar()&&!showDrawer));backdrop.classList.toggle('hidden',!showDrawer);toggle.setAttribute('aria-expanded',String(showDrawer));};setSidebarOpen(false);document.addEventListener('click',(event)=>{if(event.target.closest('[data-sidebar-toggle]')){const isOpen=document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded')==='true';setSidebarOpen(!isOpen)}else if(event.target.closest('[data-sidebar-backdrop],[data-sidebar-nav]'))setSidebarOpen(false);});document.addEventListener('keydown',(event)=>{if(event.key==='Escape')setSidebarOpen(false)});window.addEventListener('resize',()=>setSidebarOpen(false));document.body.addEventListener('htmx:afterSettle',renderLucideIcons);</script>
     </body>
 </html>

@@ -4,6 +4,48 @@ function renderLucideIcons() {
   window.lucide?.createIcons({ attrs: { "stroke-width": 1.75 } });
 }
 
+function setSidebarOpen(open) {
+  const sidebar = document.querySelector("[data-sidebar]");
+  const backdrop = document.querySelector("[data-sidebar-backdrop]");
+  const toggle = document.querySelector("[data-sidebar-toggle]");
+  if (!sidebar || !backdrop || !toggle) return;
+  const isMobile = window.innerWidth < 800;
+  const showDrawer = open && isMobile;
+  sidebar.classList.toggle("-translate-x-full", !showDrawer);
+  sidebar.toggleAttribute("inert", isMobile && !showDrawer);
+  sidebar.setAttribute("aria-hidden", String(isMobile && !showDrawer));
+  backdrop.classList.toggle("hidden", !showDrawer);
+  toggle.setAttribute("aria-expanded", String(showDrawer));
+}
+
+function showSettingsTab(tab) {
+  const project = document.querySelector("#settings-project-panel");
+  const privacy = document.querySelector("#settings-privacy-panel");
+  if (!project || !privacy) return;
+  const showPrivacy = tab === "privacy";
+  project.classList.toggle("hidden", showPrivacy);
+  privacy.classList.toggle("hidden", !showPrivacy);
+  privacy.classList.toggle("grid", showPrivacy);
+  document.querySelectorAll("[data-settings-tab]").forEach((button) => {
+    const active = button.dataset.settingsTab === tab;
+    button.setAttribute("aria-selected", String(active));
+    button.classList.toggle("border-brand", active);
+    button.classList.toggle("bg-brand-light", active);
+    button.classList.toggle("text-brand", active);
+    button.classList.toggle("border-transparent", !active);
+    button.classList.toggle("text-slate-500", !active);
+    button.classList.toggle("hover:border-slate-300", !active);
+    button.classList.toggle("hover:bg-slate-50", !active);
+    button.classList.toggle("hover:text-slate-700", !active);
+  });
+}
+
+function initializeSettingsTabs() {
+  const tab = window.sessionStorage.getItem("clearquota-settings-return-tab");
+  window.sessionStorage.removeItem("clearquota-settings-return-tab");
+  showSettingsTab(tab === "privacy" ? "privacy" : "project");
+}
+
 function layoutProviderCards(grid) {
   const styles = getComputedStyle(grid);
   const rowHeight = Number.parseFloat(styles.gridAutoRows);
@@ -76,6 +118,16 @@ function navigate(path, pushHistory) {
 }
 
 document.addEventListener("click", (event) => {
+  const sidebarToggle = event.target.closest("[data-sidebar-toggle]");
+  if (sidebarToggle) {
+    setSidebarOpen(sidebarToggle.getAttribute("aria-expanded") !== "true");
+  } else if (event.target.closest("[data-sidebar-backdrop], [data-sidebar-nav]")) {
+    setSidebarOpen(false);
+  }
+
+  const settingsTab = event.target.closest("[data-settings-tab]");
+  if (settingsTab) showSettingsTab(settingsTab.dataset.settingsTab);
+
   const providerToggle = event.target.closest("[data-provider-menu-toggle]");
   if (providerToggle) {
     setProviderMenuOpen(providerToggle.getAttribute("aria-expanded") !== "true");
@@ -102,15 +154,8 @@ document.addEventListener("htmx:beforeSwap", (event) => {
 document.addEventListener("htmx:afterSwap", (event) => {
   if (event.detail.target.id !== "app") return;
 
-  const sidebar = document.querySelector("[data-sidebar]");
-  const backdrop = document.querySelector("[data-sidebar-backdrop]");
-  const toggle = document.querySelector("[data-sidebar-toggle]");
-  const isMobile = window.innerWidth < 800;
-  sidebar?.classList.toggle("-translate-x-full", isMobile);
-  sidebar?.toggleAttribute("inert", isMobile);
-  sidebar?.setAttribute("aria-hidden", String(isMobile));
-  backdrop?.classList.toggle("hidden", true);
-  toggle?.setAttribute("aria-expanded", "false");
+  setSidebarOpen(false);
+  initializeSettingsTabs();
   initializeProviderCardGrids();
   renderLucideIcons();
 
@@ -141,12 +186,26 @@ window.addEventListener("popstate", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") setProviderMenuOpen(false);
+  if (event.key === "Escape") {
+    setProviderMenuOpen(false);
+    setSidebarOpen(false);
+  }
 });
 
-window.addEventListener("resize", () => setProviderMenuOpen(false));
+window.addEventListener("resize", () => {
+  setProviderMenuOpen(false);
+  setSidebarOpen(false);
+});
+
+document.addEventListener("submit", (event) => {
+  if (event.target.matches("[data-settings-purge]")) {
+    window.sessionStorage.setItem("clearquota-settings-return-tab", "privacy");
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
+  setSidebarOpen(false);
+  initializeSettingsTabs();
   initializeProviderCardGrids();
   renderLucideIcons();
 });

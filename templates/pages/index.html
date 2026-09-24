@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="/static/css/output.css">
         <script src="https://unpkg.com/lucide@latest"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="/static/navigation.js?v=3"></script>
+        <script src="/static/navigation.js?v=4"></script>
     </head>
     <body>
         <div id="app">
@@ -34,12 +34,9 @@
       aria-disabled="true"
       title="Coming soon"><i class="size-5" data-lucide="bell" aria-hidden="true"></i>Alerts</span></li></ul></nav><div class="mt-1 flex flex-1 flex-col"><a data-sidebar-nav
    class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-   href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a>{% match account %}{% when Some with (account) %}<button data-sidebar-settings
-        hx-get="/account/settings"
-        hx-target="#provider-dialog"
-        hx-swap="innerHTML"
-        class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"
-        type="button"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</button><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
+   href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a>{% match account %}{% when Some with (account) %}<a data-sidebar-nav
+   href="/settings"
+   class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</a><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
       aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}</div></aside>
         <div class="relative min-w-0 flex-1 bg-white">
             <button class="fixed left-3 top-3 z-20 grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 min-[800px]:hidden"
@@ -50,7 +47,7 @@
                     aria-label="Open navigation">
                 <i class="size-5" data-lucide="menu" aria-hidden="true"></i>
             </button>
-            <main class="mx-auto max-w-6xl px-5 py-10"><p class="text-xs font-bold tracking-[.16em] text-brand uppercase">Overview</p><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><a data-sidebar-nav
+            <main class="mx-auto max-w-6xl px-5 py-10"><div class="mt-2 flex flex-wrap items-center justify-between gap-4"><h1 class="text-4xl font-bold tracking-tight">Your usage at a glance.</h1><div class="flex gap-3"><a data-sidebar-nav
    class="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
    href="/providers"><i class="size-4" data-lucide="settings-2" aria-hidden="true"></i>Manage providers</a></div></div><p class="mt-2 text-sm text-slate-500">Track connected provider usage by UTC calendar month.</p><div class="mt-6 flex flex-wrap items-center justify-between gap-3"><nav class="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
      aria-label="Usage month"><a class="grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-100"
@@ -92,17 +89,12 @@
   const { animate, stagger } = Motion;
   const renderDashboardIcons = () => window.lucide?.createIcons({ attrs: { 'stroke-width': 1.75 } });
   renderDashboardIcons();
-  const isMobileSidebar = () => window.innerWidth < 800;
-  const setSidebarOpen = (open) => { const sidebar = document.querySelector('[data-sidebar]'); const backdrop = document.querySelector('[data-sidebar-backdrop]'); const toggle = document.querySelector('[data-sidebar-toggle]'); if (!sidebar || !backdrop || !toggle) return; const showDrawer = open && isMobileSidebar(); sidebar.classList.toggle('-translate-x-full', !showDrawer); sidebar.toggleAttribute('inert', isMobileSidebar() && !showDrawer); sidebar.setAttribute('aria-hidden', String(isMobileSidebar() && !showDrawer)); backdrop.classList.toggle('hidden', !showDrawer); toggle.setAttribute('aria-expanded', String(showDrawer)); };
-  setSidebarOpen(false);
-  document.addEventListener('click', (event) => { if (event.target.closest('[data-sidebar-toggle]')) { const isOpen = document.querySelector('[data-sidebar-toggle]')?.getAttribute('aria-expanded') === 'true'; setSidebarOpen(!isOpen); } else if (event.target.closest('[data-sidebar-backdrop], [data-sidebar-nav]')) setSidebarOpen(false); });
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setSidebarOpen(false); }); window.addEventListener('resize', () => setSidebarOpen(false));
   const layoutProviderCards = (grid) => { const styles = getComputedStyle(grid); const rowHeight = Number.parseFloat(styles.gridAutoRows); const rowGap = Number.parseFloat(styles.rowGap); if (!rowHeight || Number.isNaN(rowGap)) return; grid.querySelectorAll('[data-provider-card]').forEach((card) => { card.style.gridRowEnd = `span ${Math.ceil((card.offsetHeight + rowGap) / (rowHeight + rowGap))}`; }); };
   const scheduleProviderCardLayout = () => { requestAnimationFrame(() => document.querySelectorAll('[data-provider-grid]').forEach(layoutProviderCards)); };
   const observeProviderCardGrid = (grid) => { if (grid.dataset.providerGridObserved) return; grid.dataset.providerGridObserved = 'true'; new ResizeObserver(scheduleProviderCardLayout).observe(grid); };
   const animateProviderCards = () => { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; const cards = [...document.querySelectorAll('[data-provider-card]:not([data-motion-animated])')]; cards.forEach((card) => card.dataset.motionAnimated = 'true'); if (cards.length) animate(cards, { opacity: [0, 1], y: [16, 0], scale: [0.985, 1] }, { delay: stagger(0.07), duration: 0.38, ease: [0.22, 1, 0.36, 1] }); };
   const initializeProviderCardGrids = () => { document.querySelectorAll('[data-provider-grid]').forEach(observeProviderCardGrid); scheduleProviderCardLayout(); animateProviderCards(); };
-  initializeProviderCardGrids(); document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids); document.body.addEventListener('htmx:afterSettle', renderDashboardIcons); document.body.addEventListener('htmx:afterSettle', () => setSidebarOpen(false)); window.addEventListener('resize', scheduleProviderCardLayout);
+  initializeProviderCardGrids(); document.body.addEventListener('htmx:afterSettle', initializeProviderCardGrids); document.body.addEventListener('htmx:afterSettle', renderDashboardIcons); window.addEventListener('resize', scheduleProviderCardLayout);
 }
 </script>
 </body>
