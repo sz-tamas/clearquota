@@ -53,6 +53,12 @@
                        aria-current="page"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</a>
                     {% match account %}{% when Some with (account) %}<div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}{% endmatch %}
             </div>
+            <a class="absolute bottom-5 right-4 grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-200"
+               href="https://clearquota.app/docs"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="Documentation"
+               title="Documentation"><i class="size-5" data-lucide="circle-help" aria-hidden="true"></i></a>
         </aside>
         <div class="relative min-w-0 flex-1 bg-white">
             <button class="fixed left-3 top-3 z-20 grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 min-[800px]:hidden"

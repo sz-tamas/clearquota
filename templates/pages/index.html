@@ -37,7 +37,12 @@
    href="/runlogs"><i class="size-5" data-lucide="scroll-text" aria-hidden="true"></i>Refresh logs</a>{% match account %}{% when Some with (account) %}<a data-sidebar-nav
    href="/settings"
    class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-100"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</a><div class="mt-auto flex w-fit items-center gap-2 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600"><i class="size-4" data-lucide="boxes" aria-hidden="true"></i>{{ account.project_id }}</div>{% when None %}<span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400"
-      aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}</div></aside>
+      aria-disabled="true"><i class="size-5" data-lucide="settings" aria-hidden="true"></i>Settings</span>{% endmatch %}</div><a class="absolute bottom-5 right-4 grid size-9 place-items-center rounded-lg text-slate-600 hover:bg-slate-200"
+   href="https://clearquota.app/docs"
+   target="_blank"
+   rel="noopener noreferrer"
+   aria-label="Documentation"
+   title="Documentation"><i class="size-5" data-lucide="circle-help" aria-hidden="true"></i></a></aside>
         <div class="relative min-w-0 flex-1 bg-white">
             <button class="fixed left-3 top-3 z-20 grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 min-[800px]:hidden"
                     type="button"
