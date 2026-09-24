@@ -211,9 +211,9 @@
                         </div>
                     </div>
                     <section class="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                        <div class="overflow-x-auto">
+                        <div class="max-h-[calc(100dvh-14rem)] overflow-auto">
                             <table class="w-full min-w-[680px] text-left text-sm">
-                                <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-[.08em] text-slate-500 uppercase">
+                                <thead class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-[.08em] text-slate-500 uppercase">
                                     <tr>
                                         <th class="px-5 py-3">Name</th>
                                         <th class="px-5 py-3">Provider</th>
@@ -224,7 +224,29 @@
                                 <tbody class="divide-y divide-slate-100">
                                     {% for provider in providers %}
                                         <tr>
-                                            <td class="px-5 py-4 font-semibold text-ink">{{ provider.display_name }}</td>
+                                            <td class="px-5 py-4 font-semibold text-ink">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-slate-100"
+                                                          aria-hidden="true">
+                                                        {% if provider.provider_type == "apify" %}
+                                                            <img class="size-7"
+                                                                 src="/static/images/providers/apify.svg"
+                                                                 alt="">
+                                                        {% else if provider.provider_type == "openai" %}
+                                                            <img class="size-7"
+                                                                 src="/static/images/providers/openai.svg"
+                                                                 alt="">
+                                                        {% else if provider.provider_type == "resend" %}
+                                                            <img class="size-7"
+                                                                 src="/static/images/providers/resend.svg"
+                                                                 alt="">
+                                                        {% else %}
+                                                            <i class="size-6 text-slate-500" data-lucide="blocks"></i>
+                                                        {% endif %}
+                                                    </span>
+                                                    <span>{{ provider.display_name }}</span>
+                                                </div>
+                                            </td>
                                             <td class="px-5 py-4 capitalize text-slate-600">{{ provider.provider_type }}</td>
                                             <td class="px-5 py-4 font-mono text-xs text-slate-500">{{ provider.secret_ref }}</td>
                                             <td class="px-5 py-4 text-right">
