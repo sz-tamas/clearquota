@@ -119,26 +119,13 @@ pub(super) async fn create_provider(
 		return render_providers_page(&state, false);
 	}
 	if account.auth_status != "ready"
-		|| !matches!(
-			input.provider_type.as_str(),
-			"apify" | "openai" | "neon" | "upstash" | "resend"
-		) || input.display_name.trim().is_empty()
+		|| !matches!(input.provider_type.as_str(), "apify" | "openai" | "resend")
+		|| input.display_name.trim().is_empty()
 		|| input.secret_ref.trim().is_empty()
 	{
 		return Err(AppError::BadRequest);
 	}
 	let is_resend = input.provider_type == "resend";
-	let is_apify = input.provider_type == "apify";
-	if is_resend
-		&& (input.plan.as_deref().is_none_or(str::is_empty)
-			|| input.monthly_quota.unwrap_or(0) <= 0
-			|| input.daily_quota.unwrap_or(0) <= 0)
-	{
-		return Err(AppError::BadRequest);
-	}
-	if is_apify && !valid_credit_allowance(input.apify_monthly_credit_allowance) {
-		return Err(AppError::BadRequest);
-	}
 	if !valid_secret_name(input.secret_ref.trim()) {
 		return Err(AppError::BadRequest);
 	}
