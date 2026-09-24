@@ -7,7 +7,7 @@ sidebar:
 
 ## ClearQuota does not start
 
-If the installer says `gcloud is required`, install the Google Cloud CLI and rerun it. If the binary reports `USAGE_DASH_PORT must be an integer from 1 through 65535`, set a valid port or unset the variable. If binding fails, choose an unused local port with `USAGE_DASH_PORT`. For a source build, use the [installation steps](../getting-started/installation.md); its Tailwind setup task currently supports macOS architectures.
+If the installer says `gcloud is required`, install the Google Cloud CLI and rerun it. If the binary reports `USAGE_DASH_PORT must be an integer from 1 through 65535`, set a valid port or unset the variable. If binding fails, choose an unused local port with `USAGE_DASH_PORT`. For a source build, use the [installation steps](../getting-started/installation.md); mise selects the Tailwind binary for the current operating system and architecture.
 
 ## Google authentication is unavailable
 

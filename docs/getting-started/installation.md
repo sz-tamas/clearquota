@@ -26,6 +26,6 @@ mise run install
 mise run start
 ```
 
-Open `http://127.0.0.1:5050`. `mise run install` fetches Rust dependencies, downloads the standalone Tailwind CLI for macOS, and builds CSS. `mise run start` checks formatting, rebuilds CSS, and runs the Rust server. The source installation task currently selects macOS Tailwind binaries; the release installer is the supported path on Linux.
+Open `http://127.0.0.1:5050`. `mise run install` fetches Rust dependencies, installs the standalone Tailwind CLI selected for the current operating system and architecture by mise, and builds CSS. `mise run start` checks formatting, rebuilds CSS, and runs the Rust server. Tailwind is installed in mise's tool directory rather than saved in the source checkout.
 
 Next, [configure your project and first provider](first-configuration.md). See [configuration](../reference/configuration.md) to change the local port or database location.

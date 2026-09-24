@@ -3,31 +3,26 @@ rust = "stable"
 "cargo:bacon" = "latest"
 "pipx:djlint" = "latest"
 
+[tool_alias]
+tailwindcss = "github:tailwindlabs/tailwindcss"
+
+[tools.tailwindcss]
+version = "latest"
+matching_regex = "^tailwindcss-(macos|linux|windows)-"
+bin = "tailwindcss"
+
 [env]
 RUST_LOG = "info"
 USAGE_DASH_PORT = 5050
 
 [tasks.install]
-description = "Fetch Rust dependencies and install the standalone Tailwind CLI"
-run = '''
-cargo fetch
-mkdir -p .tools
-if [ ! -x .tools/tailwindcss ]; then
-  case "$(uname -m)" in
-    arm64) tailwind_asset="tailwindcss-macos-arm64" ;;
-    x86_64) tailwind_asset="tailwindcss-macos-x64" ;;
-    *) echo "Unsupported macOS architecture: $(uname -m)"; exit 1 ;;
-  esac
-  curl -fsSL -o .tools/tailwindcss "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/${tailwind_asset}"
-  chmod +x .tools/tailwindcss
-fi
-mise run css:build
-'''
+description = "Fetch Rust dependencies, install the platform-specific Tailwind CLI, and build CSS"
+run = "cargo fetch && mise run css:build"
 
 [tasks."css:build"]
 description = "Compile Tailwind CSS without npm or node_modules"
 hide = true
-run = ".tools/tailwindcss -i static/css/input.css -o static/css/output.css --minify"
+run = "tailwindcss -i static/css/input.css -o static/css/output.css --minify"
 
 [tasks."lint"]
 description = "Checks Rust and Askama template formatting"
@@ -58,7 +53,7 @@ description = "Watch Rust and templates with Bacon, and rebuild CSS on changes"
 depends = ["lint"]
 run = '''
 mise run css:build
-.tools/tailwindcss -i static/css/input.css -o static/css/output.css --minify --watch &
+tailwindcss -i static/css/input.css -o static/css/output.css --minify --watch &
 css_pid=$!
 trap 'kill "$css_pid" 2>/dev/null || true' EXIT INT TERM
 bacon run
