@@ -9,6 +9,8 @@ The non-negotiable rule is: secret values are never persisted locally, logged, o
 ## Architecture
 
 - Rust + Axum owns routing and application state.
+- `src/router/mod.rs` assembles nested context routers. Keep each route and its handler in the matching `src/router/<context>.rs` file; the remaining shared `handlers.rs` code is transitional while routes are refactored.
+- Put route request, response, and Askama template types in matching `src/dtos/<context>.rs` files. Keep `src/dtos/mod.rs` limited to module declarations and re-exports. Put reusable helpers in `src/utils/helper.rs`, with `src/utils/mod.rs` limited to declarations and re-exports.
 - Askama renders pages and HTML fragments on the server.
 - HTMX requests fragments and swaps them into the page; do not add a JSON SPA layer for ordinary dashboard actions.
 - Tailwind is compiled with the standalone CLI through `mise run css:build`. Do not add npm, `package.json`, or `node_modules`.

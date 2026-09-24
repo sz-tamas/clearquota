@@ -28,11 +28,13 @@ Build a secure, local-first provider-usage dashboard.
 - `src/secrets/`: secret resolver abstraction and GCP implementation
 - `src/providers/`: provider adapters that produce normalized metrics
 - `src/database.rs`: SQLite schema access and persistence
-- `src/web/`: Axum routes and Askama rendering
+- `src/router/`: nested Axum routers, route handlers, and Askama rendering, grouped by context
+- `src/dtos/`: context-specific request, response, and template types; `mod.rs` only declares and re-exports modules
+- `src/utils/helper.rs`: shared validation, date, formatting, and HTMX helpers
 - `templates/`: Tailwind-marked server-rendered pages and fragments
 - `static/css/input.css`: Tailwind source; rebuild with `mise run css:build`
 
-Use the same collection path for manual refresh and future scheduling. Implement provider-specific work behind the shared provider interface rather than branching inside web routes.
+Use the same collection path for manual refresh and future scheduling. Implement provider-specific work behind the shared provider interface rather than branching inside router functions. Add route logic to its context file in `src/router/`; keep shared helpers in `src/utils/` and types in a matching `src/dtos/` file.
 
 ## Current provider behavior
 

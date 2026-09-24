@@ -9,7 +9,7 @@ Use this when adding a usage source. OpenAI, Apify, and Resend are the currently
 3. Request only the provider's usage or billing endpoint and convert its response into normalized `Metric` values inside a `UsageSnapshot`.
 4. Return concise, credential-free errors. Logs may include the endpoint path, HTTP status, and normalized outcome, but never a request body, response body, key, token, or authorization detail.
 5. If one independent request succeeds and another fails, preserve the sanitized partial result when it remains meaningful to the dashboard; mark the snapshot partial rather than discarding it.
-6. Register the adapter in `ProviderRegistry`, validate any provider-specific configuration in create/edit routes, and add focused fixture-based tests containing no real secrets.
+6. Register the adapter in `ProviderRegistry`, validate any provider-specific configuration in `src/router/providers.rs`, and add focused fixture-based tests containing no real secrets. Put new route DTOs in `src/dtos/providers.rs` and reusable validation in `src/utils/helper.rs`.
 
 ### Existing collector conventions
 
@@ -19,7 +19,7 @@ Use this when adding a usage source. OpenAI, Apify, and Resend are the currently
 
 ## Modify the dashboard UI
 
-Use Askama templates in `templates/` and Tailwind classes in the markup. Prefer an Axum route that returns a fragment plus HTMX attributes (`hx-get`, `hx-post`, `hx-target`, `hx-swap`) over adding client-side state or a JSON endpoint.
+Use Askama templates in `templates/` and Tailwind classes in the markup. Add page and fragment handlers to the relevant `src/router/<context>.rs` file, with template DTOs in `src/dtos/<context>.rs`. Prefer an Axum route that returns a fragment plus HTMX attributes (`hx-get`, `hx-post`, `hx-target`, `hx-swap`) over adding client-side state or a JSON endpoint.
 
 After template or style changes, run:
 

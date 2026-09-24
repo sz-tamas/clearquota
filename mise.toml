@@ -35,6 +35,10 @@ raw = true
 hide = true
 run = "cargo fmt --all --check && djlint templates --check"
 
+[tasks.check]
+description = "Check formatting and compile the Rust application"
+run = "mise run lint && cargo check"
+
 [tasks."fmt"]
 description = "Formats Rust code and Askama templates"
 raw = true
