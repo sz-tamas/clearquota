@@ -26,15 +26,13 @@ mise run css:build
 
 [tasks."css:build"]
 description = "Compile Tailwind CSS without npm or node_modules"
+hide = true
 run = ".tools/tailwindcss -i static/css/input.css -o static/css/output.css --minify"
-
-[tasks.check]
-description = "Format-check and type-check the application"
-run = "mise run lint && cargo check"
 
 [tasks."lint"]
 description = "Checks Rust and Askama template formatting"
 raw = true
+hide = true
 run = "cargo fmt --all --check && djlint templates --check"
 
 [tasks."fmt"]

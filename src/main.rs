@@ -1,9 +1,11 @@
 mod config;
 mod database;
+mod dtos;
 mod models;
 mod providers;
+mod router;
 mod secrets;
-mod web;
+mod utils;
 
 use std::sync::Arc;
 
@@ -11,9 +13,9 @@ use axum::Router;
 use config::Config;
 use database::Database;
 use providers::ProviderRegistry;
+use router::AppState;
 use secrets::GcpSecretManagerResolver;
 use tower_http::services::ServeDir;
-use web::{AppState, routes};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	});
 
 	let app = Router::new()
-		.merge(routes::router())
+		.merge(router::router())
 		.nest_service("/static", ServeDir::new("static"))
 		.with_state(state);
 
