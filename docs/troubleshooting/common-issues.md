@@ -13,6 +13,14 @@ If the installer says `gcloud is required`, install the Google Cloud CLI and rer
 
 The dashboard may say `Google Application Default Credentials are unavailable`. Complete the browser sign-in started by **Authenticate with Google**, then use the authentication check. The collector checks `gcloud auth application-default print-access-token`, so a separate `gcloud auth login` session alone does not establish the ADC identity it needs. Reopen the dashboard or try the refresh after successful verification.
 
+If ClearQuota runs in WSL and no Google sign-in window opens, run the ADC login directly in the **same WSL environment and Linux user** that runs ClearQuota:
+
+```sh
+gcloud auth application-default login --no-launch-browser --project=YOUR_PROJECT_ID
+```
+
+Open the URL printed in the terminal in your Windows browser. Google gives you an authorization code; paste it into the waiting WSL terminal, not into ClearQuota. Then return to the dashboard and choose **I’ve completed sign-in — refresh access** (or reopen the dashboard). The code is part of Google's sign-in flow; do not share it or put it in an issue report. Running the command in Windows PowerShell instead would create ADC for Windows, which the WSL process does not use.
+
 ## The secret cannot be read
 
 For `Secret name or Secret Manager reference is invalid for the active Google project`, edit the provider and use a valid short secret name. For `Google Cloud could not access this Secret Manager secret`, confirm that the ADC identity has **Secret Manager Secret Accessor** on that secret and that the Secret Manager API is enabled. Also confirm the secret version exists. See [reference syntax](../reference/configuration.md).
